@@ -67,7 +67,7 @@ const WelcomeScreen = () => {
         <div className="pointer-events-none absolute right-0 top-40 h-96 w-96 rounded-full bg-blue-500/10 blur-[120px]" />
 
         {/* LEFT CONTENT */}
-        <motion.div
+        <motion.div 
           variants={stagger}
           initial="hidden"
           animate="visible"

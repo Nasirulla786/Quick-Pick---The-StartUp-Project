@@ -1,9 +1,9 @@
 
 import React from "react";
-import { motion } from "framer-motion";
+import { motion  , type Variants} from "framer-motion";
 import { Link } from "react-router-dom";
 
-const fadeUp = {
+const fadeUp : Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
@@ -74,7 +74,7 @@ const WelcomeScreen = () => {
           className="relative z-10"
         >
           <motion.div
-
+            variants={fadeUp}
             className="mb-7 inline-flex items-center gap-2 rounded-full border border-lime-300/20 bg-lime-300/10 px-4 py-2 text-xs font-semibold text-lime-300"
           >
             <span className="h-2 w-2 animate-pulse rounded-full bg-lime-300" />
@@ -82,7 +82,7 @@ const WelcomeScreen = () => {
           </motion.div>
 
           <motion.h1
-
+            variants={fadeUp}
             className="max-w-2xl text-5xl font-black leading-[1.12] tracking-tight sm:text-6xl lg:text-7xl"
           >
             Your journey.
@@ -93,7 +93,7 @@ const WelcomeScreen = () => {
           </motion.h1>
 
           <motion.p
-            
+            variants={fadeUp}
             className="mt-7 max-w-lg text-base leading-8 text-gray-400 sm:text-lg"
           >
             Going somewhere? Carry a little extra.
@@ -106,7 +106,7 @@ const WelcomeScreen = () => {
           </motion.p>
 
           {/* CTA */}
-          <motion.div  className="mt-9 flex flex-wrap gap-4">
+          <motion.div variants={fadeUp} className="mt-9 flex flex-wrap gap-4">
             <motion.a
               href="#get-started"
               whileHover={{ scale: 1.06, y: -3 }}
@@ -128,7 +128,7 @@ const WelcomeScreen = () => {
 
           {/* TRUST INDICATORS */}
           <motion.div
-
+            variants={fadeUp}
             className="mt-12 flex flex-wrap gap-8 border-t border-white/10 pt-8"
           >
             <div>
@@ -292,19 +292,19 @@ const WelcomeScreen = () => {
             className="mx-auto mb-14 max-w-2xl text-center"
           >
             <motion.p
-
+              variants={fadeUp}
               className="text-sm font-bold uppercase tracking-[0.2em] text-lime-300"
             >
               Simple process
             </motion.p>
             <motion.h2
-
+              variants={fadeUp}
               className="mt-4 text-3xl font-black sm:text-5xl"
             >
               Two people. One smart connection.
             </motion.h2>
             <motion.p
-
+              variants={fadeUp}
               className="mt-5 leading-7 text-gray-400"
             >
               Whether you are sending a parcel or traveling with extra space,
@@ -315,7 +315,7 @@ const WelcomeScreen = () => {
           <div className="grid gap-5 md:grid-cols-2">
 
             <motion.div
-
+              variants={fadeUp}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
@@ -337,7 +337,7 @@ const WelcomeScreen = () => {
             </motion.div>
 
             <motion.div
-
+              variants={fadeUp}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}

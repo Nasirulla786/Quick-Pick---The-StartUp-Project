@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Package, Plane, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { signInWithPopup } from "firebase/auth";
+import { auth, GoogleProvider } from "@/lib/firebase";
 
 const RegisterPage = () => {
   const [accountType, setAccountType] = useState<
@@ -19,6 +21,24 @@ const RegisterPage = () => {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+
+
+  async function handleGoogleLogin() {
+    const res = await signInWithPopup(auth, GoogleProvider);
+    console.log(
+      res.user.displayName
+    );
+    console.log(
+      res.user.email
+    );
+    console.log(
+      res.user.emailVerified
+    );
+    console.log(
+      res.user.photoURL
+    );
+  }
 
   return (
     <div className="min-h-screen grid lg:h-screen lg:overflow-hidden lg:grid-cols-2 bg-[#0b1020]">
@@ -51,6 +71,8 @@ const RegisterPage = () => {
               type="button"
               variant="outline"
               className="h-9 w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+
+              onClick={handleGoogleLogin}
             >
               <svg viewBox="0 0 48 48" className="mr-2 h-5 w-5" aria-hidden="true">
                 <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" />
@@ -82,19 +104,17 @@ const RegisterPage = () => {
                 <button
                   type="button"
                   onClick={() => setAccountType("sender")}
-                  className={`rounded-xl border p-3 text-left transition-all ${
-                    accountType === "sender"
+                  className={`rounded-xl border p-3 text-left transition-all ${accountType === "sender"
                       ? "border-[#bef264] bg-[#bef264]/10"
                       : "border-white/10 bg-white/[0.03] hover:border-white/30"
-                  }`}
+                    }`}
                 >
                   <Package
                     size={20}
-                    className={`mb-2 ${
-                      accountType === "sender"
+                    className={`mb-2 ${accountType === "sender"
                         ? "text-[#bef264]"
                         : "text-slate-400"
-                    }`}
+                      }`}
                   />
 
                   <p className="text-sm font-semibold text-white">
@@ -109,19 +129,17 @@ const RegisterPage = () => {
                 <button
                   type="button"
                   onClick={() => setAccountType("traveller")}
-                  className={`rounded-xl border p-3 text-left transition-all ${
-                    accountType === "traveller"
+                  className={`rounded-xl border p-3 text-left transition-all ${accountType === "traveller"
                       ? "border-[#bef264] bg-[#bef264]/10"
                       : "border-white/10 bg-white/[0.03] hover:border-white/30"
-                  }`}
+                    }`}
                 >
                   <Plane
                     size={20}
-                    className={`mb-2 ${
-                      accountType === "traveller"
+                    className={`mb-2 ${accountType === "traveller"
                         ? "text-[#bef264]"
                         : "text-slate-400"
-                    }`}
+                      }`}
                   />
 
                   <p className="text-sm font-semibold text-white">

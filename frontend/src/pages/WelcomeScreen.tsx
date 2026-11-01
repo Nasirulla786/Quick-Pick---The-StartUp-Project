@@ -1,9 +1,9 @@
 
 import React from "react";
-import { motion  , type Variants} from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Link } from "react-router-dom";
 
-const fadeUp : Variants = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
@@ -43,7 +43,7 @@ const WelcomeScreen = () => {
         </motion.div>
 
         <div className="hidden items-center gap-9 text-sm text-gray-300 md:flex">
-            <h1>Travel with benefit</h1>
+          <h1>Travel with benefit</h1>
 
         </div>
 
@@ -52,10 +52,10 @@ const WelcomeScreen = () => {
 
         <Link
 
-          to={"https://www.google.com"}
+          to={"/register-user"}
           className="rounded-full bg-lime-300 px-5 py-3 text-sm font-bold text-[#0b1020] transition hover:bg-lime-200"
         >
-          Sign In →
+          Get Started →
         </Link>
       </nav>
 
@@ -67,7 +67,7 @@ const WelcomeScreen = () => {
         <div className="pointer-events-none absolute right-0 top-40 h-96 w-96 rounded-full bg-blue-500/10 blur-[120px]" />
 
         {/* LEFT CONTENT */}
-        <motion.div 
+        <motion.div
           variants={stagger}
           initial="hidden"
           animate="visible"
@@ -376,14 +376,14 @@ const WelcomeScreen = () => {
           <p className="mt-5 text-gray-400">
             Make your next journey more meaningful with Quick & Pick.
           </p>
-          <motion.a
-            href="#"
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.95 }}
+          <Link
+            to={"/register-user"}
+
+
             className="mt-8 inline-block rounded-xl bg-lime-300 px-8 py-4 font-bold text-[#0b1020]"
           >
             Let's Get Started →
-          </motion.a>
+          </Link>
         </motion.div>
       </section>
 

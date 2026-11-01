@@ -15,21 +15,24 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    confirm_password: {
+
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    photoURL: {
       type: String,
-      required: true,
     },
     entity: {
       type: String,
       enum: ["sender", "traveller"],
-      required:true
+      required: true,
     },
   },
   { timestamps: true },
 );
 
+const User = mongoose.model("User", userSchema);
 
-
-const User = mongoose.model("User", userSchema)
-
-export default User
+export default User;

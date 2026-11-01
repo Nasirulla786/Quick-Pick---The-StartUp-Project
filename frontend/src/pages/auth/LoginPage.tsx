@@ -65,7 +65,7 @@ const LoginPage = () => {
 
       if (response.status === 200) {
         dispatch(setUserData(response.data.user));
-        navigate("/");
+        navigate("/home");
       }
     } catch (error: any) {
       console.error("Google login error:", error);
@@ -87,7 +87,7 @@ const LoginPage = () => {
       if (response.status === 200) {
         dispatch(setUserData(response.data.user));
         toast.success("Login successful!");
-        navigate("/");
+        navigate("/home");
       }
     } catch (error: any) {
       console.error("Login error:", error);
@@ -132,7 +132,7 @@ const LoginPage = () => {
               className="h-11 w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
             >
 
-                <svg
+              <svg
                 viewBox="0 0 48 48"
                 className="mr-2 h-5 w-5"
                 aria-hidden="true"

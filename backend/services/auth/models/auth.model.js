@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       default: null,
-      
+
     },
 
     emailVerified: {
@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema(
     entity: {
       type: String,
       enum: ["sender", "traveller"],
+      default:null
     },
   },
   { timestamps: true },

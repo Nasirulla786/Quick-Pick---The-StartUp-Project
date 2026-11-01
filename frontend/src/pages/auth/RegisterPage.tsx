@@ -14,6 +14,11 @@ import { Package, Plane, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, GoogleProvider } from "@/lib/firebase";
 import api from "@/services/Axios";
+import { useDispatch } from "react-redux";
+import type { AppDispatch } from "@/redux/stores/store";
+import { setUserData } from "@/redux/slices/userSlice";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const RegisterPage = () => {
   const [accountType, setAccountType] = useState<
@@ -26,30 +31,32 @@ const RegisterPage = () => {
 
 
 
+  const dispatch = useDispatch<AppDispatch>()
+  const navigate = useNavigate()
+
 
   async function handleGoogleLogin() {
-    const res = await signInWithPopup(auth, GoogleProvider);
-    const idToken = await res.user.getIdToken();
 
-    const response = await api.post("/auth/google" ,{idToken})
-    console.log(response.data);
+    try {
+      const res = await signInWithPopup(auth, GoogleProvider);
+      const idToken = await res.user.getIdToken();
+
+      const response = await api.post("/auth/google", { idToken })
+      if (response.status == 200) {
+        dispatch(setUserData(response.data.user))
+        navigate("/select-entity")
+      }
+
+    } catch (error: any) {
+      console.error("Google login error", error);
+      toast.error(error.response.data.message)
 
 
-    // console.log(
-    //   res.user.displayName
-    // );
-    // console.log(
-    //   res.user.email
-    // );
-    // console.log(
-    //   res.user.emailVerified
-    // );
-    // console.log(
-    //   res.user.photoURL
-    // );
-    // console.log(
-    //   res.user.uid
-    // );
+
+    }
+
+
+
   }
 
   return (
@@ -117,15 +124,15 @@ const RegisterPage = () => {
                   type="button"
                   onClick={() => setAccountType("sender")}
                   className={`rounded-xl border p-3 text-left transition-all ${accountType === "sender"
-                      ? "border-[#bef264] bg-[#bef264]/10"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/30"
+                    ? "border-[#bef264] bg-[#bef264]/10"
+                    : "border-white/10 bg-white/[0.03] hover:border-white/30"
                     }`}
                 >
                   <Package
                     size={20}
                     className={`mb-2 ${accountType === "sender"
-                        ? "text-[#bef264]"
-                        : "text-slate-400"
+                      ? "text-[#bef264]"
+                      : "text-slate-400"
                       }`}
                   />
 
@@ -142,15 +149,15 @@ const RegisterPage = () => {
                   type="button"
                   onClick={() => setAccountType("traveller")}
                   className={`rounded-xl border p-3 text-left transition-all ${accountType === "traveller"
-                      ? "border-[#bef264] bg-[#bef264]/10"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/30"
+                    ? "border-[#bef264] bg-[#bef264]/10"
+                    : "border-white/10 bg-white/[0.03] hover:border-white/30"
                     }`}
                 >
                   <Plane
                     size={20}
                     className={`mb-2 ${accountType === "traveller"
-                        ? "text-[#bef264]"
-                        : "text-slate-400"
+                      ? "text-[#bef264]"
+                      : "text-slate-400"
                       }`}
                   />
 

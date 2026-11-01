@@ -1,11 +1,12 @@
 
 import "./App.css";
-import { Button } from "./components/ui/button";
 import RouterService from "./services/Router-service";
+import { Toaster } from "sonner";
 
 function App() {
   return (
     <>
+      <Toaster position="top-right" richColors />
       <RouterService />
     </>
   );

@@ -13,6 +13,7 @@ import {
 import { Package, Plane, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { signInWithPopup } from "firebase/auth";
 import { auth, GoogleProvider } from "@/lib/firebase";
+import api from "@/services/Axios";
 
 const RegisterPage = () => {
   const [accountType, setAccountType] = useState<
@@ -24,20 +25,31 @@ const RegisterPage = () => {
 
 
 
+
+
   async function handleGoogleLogin() {
     const res = await signInWithPopup(auth, GoogleProvider);
-    console.log(
-      res.user.displayName
-    );
-    console.log(
-      res.user.email
-    );
-    console.log(
-      res.user.emailVerified
-    );
-    console.log(
-      res.user.photoURL
-    );
+    const idToken = await res.user.getIdToken();
+
+    const response = await api.post("/auth/google" ,{idToken})
+    console.log(response.data);
+
+
+    // console.log(
+    //   res.user.displayName
+    // );
+    // console.log(
+    //   res.user.email
+    // );
+    // console.log(
+    //   res.user.emailVerified
+    // );
+    // console.log(
+    //   res.user.photoURL
+    // );
+    // console.log(
+    //   res.user.uid
+    // );
   }
 
   return (

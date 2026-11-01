@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      default: null,
+      
     },
 
     emailVerified: {
@@ -24,10 +25,14 @@ const userSchema = new mongoose.Schema(
     photoURL: {
       type: String,
     },
+    firebaseUID: {
+      type: String,
+      unique: true,
+      sparse:true
+    },
     entity: {
       type: String,
       enum: ["sender", "traveller"],
-      required: true,
     },
   },
   { timestamps: true },

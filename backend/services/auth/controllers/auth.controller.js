@@ -3,7 +3,6 @@ import generateToken from "../config/generateToken.js";
 import User from "../models/auth.model.js";
 import bcrypt from "bcryptjs";
 
-
 export const RegisterUser = async (req, res) => {
   try {
     const { name, email, password, entity } = req.body;
@@ -88,18 +87,71 @@ export const RegisterUser = async (req, res) => {
 
 export const LoginUser = async (req, res) => {
   try {
+    const { email, password } = req.body;
+
+    // 1. Check required fields
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // 2. Find user
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // 3. Check password
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please login using Google",
+      });
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
+      });
+    }
+
+    // 4. Login successful
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        entity: user.entity,
+        photoURL: user.photoURL,
+      },
+    });
   } catch (error) {
     console.error("Login user error", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
-
 export const LogoutUser = async (req, res) => {
   try {
   } catch (error) {
     console.error("Logout user error", error);
   }
 };
-export const GoogleLogin = async (req, res) => {
+export const GoogleIdRegister = async (req, res) => {
   try {
     const { idToken } = req.body;
     if (!idToken) {
@@ -134,6 +186,42 @@ export const GoogleLogin = async (req, res) => {
     return res.status(401).json({
       message: "Invalid Firebase Token",
     });
+  }
+};
+
+export const GoogleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: "ID Token is required" });
+    }
+
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+
+    const user = await User.findOne({
+      firebaseUID: decodedToken.uid,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Account does not exist. Please register first.",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Google Login Successful",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        entity: user.entity,
+        photoURL: user.photoURL,
+      },
+    });
+  } catch (error) {
+    console.error("Google login error", error);
+    return res.status(401).json({ message: "Google login failed" });
   }
 };
 

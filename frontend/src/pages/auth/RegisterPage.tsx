@@ -16,7 +16,7 @@ import api from "@/services/Axios";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/redux/stores/store";
 import { setUserData } from "@/redux/slices/userSlice";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -42,6 +42,7 @@ const RegisterPage = () => {
       const response = await api.post("/auth/google", { idToken });
       if (response.status == 200) {
         dispatch(setUserData(response.data.user));
+        toast.success("Register successful!");
         navigate("/select-entity");
       }
     } catch (error: any) {
@@ -332,12 +333,12 @@ const RegisterPage = () => {
             {/* Login Link */}
             <p className="text-center text-xs text-slate-400">
               Already have an account?{" "}
-              <a
-                href="/login"
+              <Link
+                to="/login-user"
                 className="font-semibold text-[#bef264] hover:underline"
               >
                 Login
-              </a>
+              </Link>
             </p>
           </CardContent>
         </Card>

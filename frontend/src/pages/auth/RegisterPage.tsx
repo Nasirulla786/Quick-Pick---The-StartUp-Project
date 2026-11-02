@@ -85,8 +85,8 @@ const RegisterPage = () => {
       });
       if (res.status == 201) {
         dispatch(setUserData(res.data.user));
+        navigate("/otp");
       }
-      navigate("/home");
     } catch (error: any) {
       toast.error(error.response.data.message);
 

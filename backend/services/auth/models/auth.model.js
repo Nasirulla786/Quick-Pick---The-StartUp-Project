@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       default: null,
-
+      select: false,
     },
 
     emailVerified: {
@@ -28,12 +28,21 @@ const userSchema = new mongoose.Schema(
     firebaseUID: {
       type: String,
       unique: true,
-      sparse:true
+      sparse: true,
+      select: false,
     },
     entity: {
       type: String,
       enum: ["sender", "traveller"],
-      default:null
+      default: null,
+    },
+    otp: {
+      type: String,
+      default: null,
+    },
+    otpExpiry: {
+      type: Date,
+      default: () => new Date(Date.now() + 10 * 60 * 1000),
     },
   },
   { timestamps: true },

@@ -1,5 +1,6 @@
 import { adminAuth } from "../config/firebase.js";
 import generateToken from "../config/generateToken.js";
+import { sendEmail } from "../config/sendMail.js";
 import User from "../models/auth.model.js";
 import bcrypt from "bcryptjs";
 
@@ -37,6 +38,7 @@ export const RegisterUser = async (req, res) => {
 
     // 4. Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     // 5. Create user
     const user = await User.create({
@@ -44,36 +46,17 @@ export const RegisterUser = async (req, res) => {
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       entity,
+      emailVerified: false,
+      otp
     });
 
-    // 6. Generate JWT token
-    const token = await generateToken(user._id);
-
-    if (!token) {
-      return res.status(500).json({
-        success: false,
-        message: "Token generation failed",
-      });
-    }
-
-    // 7. Set HTTP-only cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000,
-    });
+    await sendEmail(email, otp);
 
     // 8. Send response
     return res.status(201).json({
       success: true,
       message: "Registration successful",
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        entity: user.entity,
-      },
+      user,
     });
   } catch (error) {
     console.error("Register user error:", error);
@@ -240,6 +223,88 @@ export const updateEntity = async (req, res) => {
     console.error("Update entity error", error);
     return res.status(500).json({
       message: "Update entity error",
+    });
+  }
+};
+
+export const VerifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // 1. Check required fields
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+      });
+    }
+
+    // 2. Find user
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // 3. Check already verified
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already verified",
+      });
+    }
+
+    // 4. Check OTP
+    if (user.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    // 5. Check OTP expiry
+    if (!user.otpExpiry || user.otpExpiry.getTime() <= Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
+
+    // 6. Verify email
+    user.emailVerified = true;
+    user.otp = null;
+    user.otpExpiry = null;
+
+    await user.save();
+
+    // 7. Generate token
+    const token = await generateToken(user._id);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    // 8. Response
+
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "OTP verification failed",
     });
   }
 };

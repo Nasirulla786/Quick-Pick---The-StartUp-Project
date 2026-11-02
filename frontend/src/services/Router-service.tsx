@@ -5,6 +5,7 @@ import RegisterPage from '../pages/auth/RegisterPage'
 import LoginPage from '../pages/auth/LoginPage'
 import SelectEntity from '../pages/SelectEntity'
 import Home from '@/pages/Home'
+import OTP from '@/pages/auth/OTP'
 
 
 const RouterService = () => {
@@ -16,6 +17,8 @@ const RouterService = () => {
                 <Route path="/register-user" element={<RegisterPage />} />
                 <Route path="/login-user" element={<LoginPage />} />
                 <Route path="/select-entity" element={<SelectEntity />} />
+                <Route path="/otp" element={<OTP/>} />
+
             </Routes>
 
         </>

@@ -10,13 +10,19 @@ import {
     Pencil,
     Save,
 } from "lucide-react";
+import api from "@/services/Axios";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "@/redux/stores/store";
+import { setUserData } from "@/redux/slices/userSlice";
 
 const MyProfile = () => {
     const [isEditing, setIsEditing] = useState(false);
 
+    const {userData} = useSelector((state:RootState)=>state.auth);
+
     const [profile, setProfile] = useState({
-        name: "Traveller Name",
-        email: "traveller@example.com",
+        name: userData?.name,
+        email: userData?.email,
 
     });
 
@@ -27,9 +33,15 @@ const MyProfile = () => {
         });
     };
 
-    const handleSave = () => {
-        console.log("Updated Profile:", profile);
+    const dispatch = useDispatch();
 
+    const handleSave = async () => {
+
+        setIsEditing(false);
+
+        const res = await api.post("/auth/user/update-profile", { profile });
+        console.log("this is  res", res.data.user);
+        dispatch(setUserData(res.data.user))
 
 
     };

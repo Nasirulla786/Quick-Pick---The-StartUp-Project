@@ -1,9 +1,10 @@
+import { json } from "express";
 import User from "../models/auth.model.js";
 
 export const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-  
+
 
     if (!user) {
       return res.status(404).json({
@@ -13,7 +14,7 @@ export const getCurrentUser = async (req, res) => {
     }
 
 
-    console.log("this is user",user);
+
     return res.status(200).json({
       success: true,
       message: "Current user fetched successfully",
@@ -25,6 +26,48 @@ export const getCurrentUser = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch current user",
+    });
+  }
+};
+
+
+export const updateController = async (req, res) => {
+  try {
+    const { name, email } = req.body.profile;
+
+    if (!name || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and email are required",
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.name = name.trim();
+    user.email = email.toLowerCase().trim();
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user
+    });
+
+  } catch (error) {
+    console.error("Update profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
     });
   }
 };

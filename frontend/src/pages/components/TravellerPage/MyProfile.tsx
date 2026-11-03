@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
     Camera,
     UserRound,
@@ -16,15 +16,23 @@ import type { RootState } from "@/redux/stores/store";
 import { setUserData } from "@/redux/slices/userSlice";
 
 const MyProfile = () => {
+
+
     const [isEditing, setIsEditing] = useState(false);
 
-    const {userData} = useSelector((state:RootState)=>state.auth);
-
+    const { userData } = useSelector((state: RootState) => state.auth);
+    const [backendImage, setBackendImage] = useState<File | null>(null)
+    const [frontendImage, setFrontendImage] = useState<string | null>(null)
+    const imageRef = useRef<HTMLInputElement>(null);
     const [profile, setProfile] = useState({
-        name: userData?.name,
-        email: userData?.email,
+        name: userData?.name || "",
+        email: userData?.email || "",
 
     });
+
+
+
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setProfile({
@@ -39,7 +47,14 @@ const MyProfile = () => {
 
         setIsEditing(false);
 
-        const res = await api.post("/auth/user/update-profile", { profile });
+        const formData: any = new FormData();
+        formData.append("name", profile.name)
+        formData.append("email", profile.email)
+        if (backendImage) {
+            formData.append("image", backendImage);
+        }
+
+        const res = await api.post("/auth/user/update-profile", formData);
         console.log("this is  res", res.data.user);
         dispatch(setUserData(res.data.user))
 
@@ -82,11 +97,29 @@ const MyProfile = () => {
             {/* Profile Card */}
             <div className="bg-[#111a2e] border border-white/10 rounded-2xl p-6">
 
-                <div className="flex flex-wrap items-center gap-5">
+                <div className="flex flex-wrap items-center gap-5" onClick={() => {
+                    imageRef.current?.click();
+                }}>
                     <div className="relative">
-                        <div className="w-24 h-24 rounded-full bg-[#26334a] flex items-center justify-center">
-                            <UserRound size={42} className="text-[#bef264]" />
-                        </div>
+
+                        {
+                            frontendImage ? <img src={frontendImage} alt="None" className="w-22 h-22 rounded-full object-cover" /> : <div className="w-24 h-24 rounded-full bg-[#26334a] flex items-center justify-center">
+                                <UserRound size={42} className="text-[#bef264]" />
+                            </div>
+                        }
+
+                        <input type="file" hidden ref={imageRef} accept="image/*" onChange={(e) => {
+                            console.log(e.target);
+                            const file = e.target.files?.[0];
+
+                            if (file) {
+                                setBackendImage(file)
+                                setFrontendImage(URL.createObjectURL(file))
+                            }
+
+
+                        }} />
+
 
                         <button className="absolute bottom-0 right-0 bg-[#bef264] text-[#0b1020] p-2 rounded-full">
                             <Camera size={16} />

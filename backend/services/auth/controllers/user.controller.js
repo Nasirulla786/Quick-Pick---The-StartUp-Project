@@ -34,6 +34,7 @@ export const getCurrentUser = async (req, res) => {
 export const updateController = async (req, res) => {
   try {
     const { name, email } = req.body.profile;
+    if(req)
 
     if (!name || !email) {
       return res.status(400).json({

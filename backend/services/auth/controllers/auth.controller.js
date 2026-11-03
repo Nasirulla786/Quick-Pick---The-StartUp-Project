@@ -72,6 +72,7 @@ export const LoginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+
     // 1. Check required fields
     if (!email || !password) {
       return res.status(400).json({
@@ -81,7 +82,8 @@ export const LoginUser = async (req, res) => {
     }
 
     // 2. Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("password");
+  
 
     if (!user) {
       return res.status(404).json({
@@ -89,6 +91,7 @@ export const LoginUser = async (req, res) => {
         message: "Invalid email or password",
       });
     }
+
 
     // 3. Check password
     if (!user.password) {

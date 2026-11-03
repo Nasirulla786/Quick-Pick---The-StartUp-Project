@@ -44,6 +44,22 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: () => new Date(Date.now() + 10 * 60 * 1000),
     },
+    // phoneNumber:{
+    //   type:String,
+    //   required:false,
+    //   unique:true
+    // },
+    // adharId:{
+    //    type:String,
+    //   required:false,
+    //   unique:true
+    // },
+    // travelMode:{
+    //   type:String,
+    //   enum:["train","flight","bus","car","other"],
+    //   required:false
+    // },
+
   },
   { timestamps: true },
 );

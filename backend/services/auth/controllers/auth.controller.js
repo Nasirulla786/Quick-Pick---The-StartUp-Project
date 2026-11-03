@@ -83,7 +83,7 @@ export const LoginUser = async (req, res) => {
 
     // 2. Find user
     const user = await User.findOne({ email }).select("password");
-  
+
 
     if (!user) {
       return res.status(404).json({
@@ -108,7 +108,19 @@ export const LoginUser = async (req, res) => {
         success: false,
         message: "Invalid email or password",
       });
+
     }
+
+
+
+    const token = await generateToken(user._id);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
 
     // 4. Login successful
     return res.status(200).json({
@@ -163,6 +175,17 @@ export const GoogleIdRegister = async (req, res) => {
       entity: null,
     });
 
+
+    const token = await generateToken(user._id);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+
     return res.status(200).json({
       message: "Google Authentication Successful",
       user,
@@ -194,6 +217,16 @@ export const GoogleLogin = async (req, res) => {
         message: "Account does not exist. Please register first.",
       });
     }
+
+    const token = await generateToken(user._id);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
 
     return res.status(200).json({
       message: "Google Login Successful",

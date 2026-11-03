@@ -98,9 +98,14 @@ const MyProfile = () => {
             <div className="bg-[#111a2e] border border-white/10 rounded-2xl p-6">
 
                 <div className="flex flex-wrap items-center gap-5" onClick={() => {
-                    imageRef.current?.click();
+                    if (isEditing == true) {
+
+                        imageRef.current?.click();
+                    }
                 }}>
                     <div className="relative">
+
+
 
                         {
                             frontendImage ? <img src={frontendImage} alt="None" className="w-22 h-22 rounded-full object-cover" /> : <div className="w-24 h-24 rounded-full bg-[#26334a] flex items-center justify-center">

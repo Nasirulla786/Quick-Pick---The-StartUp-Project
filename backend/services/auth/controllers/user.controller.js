@@ -1,10 +1,10 @@
 import { json } from "express";
 import User from "../models/auth.model.js";
+import uploadOnCloudinary from "../config/cloudinary.js";
 
 export const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-
 
     if (!user) {
       return res.status(404).json({
@@ -12,8 +12,6 @@ export const getCurrentUser = async (req, res) => {
         message: "User not found",
       });
     }
-
-
 
     return res.status(200).json({
       success: true,
@@ -30,20 +28,18 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
-
 export const updateController = async (req, res) => {
   try {
-    const { name, email } = req.body.profile;
-    if(req)
+    const { name, email } = req.body;
+    if (req)
+      if (!name || !email) {
+        return res.status(400).json({
+          success: false,
+          message: "Name and email are required",
+        });
+      }
 
-    if (!name || !email) {
-      return res.status(400).json({
-        success: false,
-        message: "Name and email are required",
-      });
-    }
-
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.userId);
 
     if (!user) {
       return res.status(404).json({
@@ -55,14 +51,18 @@ export const updateController = async (req, res) => {
     user.name = name.trim();
     user.email = email.toLowerCase().trim();
 
+    let image;
+    if (req.file) {
+      image = await uploadOnCloudinary(req.file);
+    }
+
     await user.save();
 
     return res.status(200).json({
       success: true,
       message: "Profile updated successfully",
-      user
+      user,
     });
-
   } catch (error) {
     console.error("Update profile error:", error);
 

@@ -56,6 +56,8 @@ export const updateController = async (req, res) => {
       image = await uploadOnCloudinary(req.file);
     }
 
+
+    user.photoURL = image;
     await user.save();
 
     return res.status(200).json({

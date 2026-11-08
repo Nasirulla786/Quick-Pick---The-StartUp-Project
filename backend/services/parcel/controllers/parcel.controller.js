@@ -11,6 +11,7 @@ const getCacheKey = (userId) => `parcel:my-parcels:${userId}`;
 export const createParcel = async (req, res) => {
   try {
     const userId = req.userId
+    console.log("user id",userId);
 
     if (!userId) {
       return res.status(401).json({

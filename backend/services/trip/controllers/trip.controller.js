@@ -92,16 +92,17 @@ export const createTrip = async (req, res) => {
 // 2. GET ALL AVAILABLE TRIPS
 export const getAllTrips = async (req, res) => {
   try {
+
+
     const cached = await redis.get("trip:all");
 
     if (cached) {
       return res.status(200).json(JSON.parse(cached));
     }
 
-    const trips = await Trip.find({
-      status: "available",
-      departureDate: { $gte: new Date() },
-    }).sort({ departureDate: 1 });
+    const trips = await Trip.find({});
+
+    console.log("this is trips",trips);
 
     const response = {
       success: true,
@@ -109,9 +110,9 @@ export const getAllTrips = async (req, res) => {
       trips,
     };
 
-    await redis.set("trip:all", JSON.stringify(response), {
-      EX: 60,
-    });
+    console.log(response);
+
+    await redis.set("trip:all", JSON.stringify(response.trips));
 
     return res.status(200).json(response);
   } catch (error) {

@@ -15,6 +15,7 @@ app.use(
 
 app.use("/api/auth", proxy(process.env.AUTH_SERVICE_URL));
 app.use("/api/trip" , proxy(process.env.TRIP_SERVICE_URL));
+app.use("/api/parcels" , proxy(process.env.PARCEL_SERVICE_URL));
 
 app.listen(PORT, () => {
   console.log("Server is running of Gateway server is : -", PORT);

@@ -1,7 +1,31 @@
 
-import React, { useEffect, useState } from "react";
-import { Plus, Package, Eye } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Plus,
+  Eye,
+  Pencil,
+  Trash2,
+  X,
+  Package,
+  RefreshCw,
+  MapPin,
+  CalendarDays,
+  Clock3,
+  Weight,
+  IndianRupee,
+  Sparkles,
+  ArrowRight,
+  Truck,
+  UserRound,
+  Send,
+  LayoutDashboard,
+  Search,
+  CircleCheck,
+  Wallet,
+  Boxes,
+} from "lucide-react";
 import api from "@/services/Axios";
+import { useNavigate } from "react-router-dom";
 
 type Trip = {
   _id: string;
@@ -13,254 +37,1090 @@ type Trip = {
   availableCapacity: number;
   pricePerKg: number;
   description?: string;
+  traveller: string;
 };
 
+type Parcel = {
+  _id: string;
+  title: string;
+  from: string;
+  to: string;
+  date: string;
+  weight: number;
+  budget: number;
+  status?: string;
+};
+
+const initialForm = {
+  title: "",
+  from: "",
+  to: "",
+  date: "",
+  weight: "",
+  budget: "",
+};
+
+const inputClass =
+  "w-full rounded-xl border border-white/10 bg-[#0b1020] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/10";
+
+const cardClass =
+  "rounded-2xl border border-white/[0.08] bg-[#111a2e] shadow-xl shadow-black/10";
+
 export const SenderPage = () => {
+  const navigate = useNavigate();
+
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [parcels, setParcels] = useState<Parcel[]>([]);
+
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [editingParcel, setEditingParcel] = useState<Parcel | null>(null);
 
   const [showParcelForm, setShowParcelForm] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [tripView, setTripView] = useState<"all" | "available">("all");
+
+  const [loadingTrips, setLoadingTrips] = useState(false);
+  const [loadingParcels, setLoadingParcels] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">(
+    "success"
+  );
 
-  const [form, setForm] = useState({
-    title: "",
-    from: "",
-    to: "",
-    date: "",
-    weight: "",
-    budget: "",
-  });
+  const [form, setForm] = useState(initialForm);
 
-  // Get other travellers' available trips
+  const showMessage = (
+    text: string,
+    type: "success" | "error" = "success"
+  ) => {
+    setMessage(text);
+    setMessageType(type);
+  };
+
+  // GET ALL TRIPS
   const getTrips = async () => {
     try {
-      setLoading(true);
-      const res = await api.get("/trips/all");
-      setTrips(res.data.data || []);
+      setLoadingTrips(true);
+
+      const res = await api.get("/trip/all");
+
+      const tripData = Array.isArray(res.data)
+        ? res.data
+        : res.data.trips || res.data.data || [];
+
+      setTrips(tripData);
     } catch (error: any) {
-      setMessage(error.response?.data?.message || "Unable to load trips");
+      showMessage(
+        error.response?.data?.message || "Unable to load trips",
+        "error"
+      );
     } finally {
-      setLoading(false);
+      setLoadingTrips(false);
+    }
+  };
+
+  // GET MY PARCELS
+  const getMyParcels = async () => {
+    try {
+      setLoadingParcels(true);
+
+      const res = await api.get("/parcels/my-parcels");
+
+      const parcelData = Array.isArray(res.data)
+        ? res.data
+        : res.data.data || res.data.parcels || [];
+
+      setParcels(parcelData);
+    } catch (error: any) {
+      showMessage(
+        error.response?.data?.message || "Unable to load parcels",
+        "error"
+      );
+    } finally {
+      setLoadingParcels(false);
     }
   };
 
   useEffect(() => {
     getTrips();
+    getMyParcels();
   }, []);
 
-  // Send parcel
-  const handleSendParcel = async (e: React.FormEvent<HTMLFormElement>) => {
+  // AVAILABLE TRIPS
+  const availableTrips = useMemo(() => {
+    return trips.filter((trip) => {
+      const isFutureTrip =
+        new Date(trip.departureDate).setHours(23, 59, 59, 999) >= Date.now();
+
+      return trip.availableCapacity > 0 && isFutureTrip;
+    });
+  }, [trips]);
+
+  const displayedTrips =
+    tripView === "available" ? availableTrips : trips;
+
+  // PARCEL FORM
+  const openCreateForm = () => {
+    setEditingParcel(null);
+    setForm(initialForm);
+    setShowParcelForm(true);
+  };
+
+  const openEditForm = (parcel: Parcel) => {
+    setEditingParcel(parcel);
+
+    setForm({
+      title: parcel.title,
+      from: parcel.from,
+      to: parcel.to,
+      date: parcel.date.slice(0, 10),
+      weight: String(parcel.weight),
+      budget: String(parcel.budget),
+    });
+
+    setShowParcelForm(true);
+  };
+
+  const closeParcelForm = () => {
+    setShowParcelForm(false);
+    setEditingParcel(null);
+    setForm(initialForm);
+  };
+
+  // CREATE / UPDATE PARCEL
+  const handleParcelSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
+    if (form.from.trim().toLowerCase() === form.to.trim().toLowerCase()) {
+      showMessage("Pickup and delivery locations cannot be the same.", "error");
+      return;
+    }
+
     try {
-      await api.post("/parcels/create", {
+      setSubmitting(true);
+
+      const payload = {
         ...form,
+        title: form.title.trim(),
+        from: form.from.trim(),
+        to: form.to.trim(),
         weight: Number(form.weight),
         budget: Number(form.budget),
-      });
+      };
 
-      setMessage("Parcel submitted successfully!");
-      setForm({
-        title: "",
-        from: "",
-        to: "",
-        date: "",
-        weight: "",
-        budget: "",
-      });
-      setShowParcelForm(false);
+      if (editingParcel) {
+        await api.put(`/parcels/${editingParcel._id}`, payload);
+        showMessage("Parcel updated successfully!");
+      } else {
+        await api.post("/parcels/create", payload);
+        showMessage("Parcel created successfully!");
+      }
+
+      closeParcelForm();
+      await getMyParcels();
     } catch (error: any) {
-      setMessage(error.response?.data?.message || "Unable to send parcel");
+      showMessage(
+        error.response?.data?.message || "Unable to save parcel",
+        "error"
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Open trip details
+  // DELETE PARCEL
+  const handleDeleteParcel = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this parcel?")) {
+      return;
+    }
+
+    try {
+      setDeletingId(id);
+
+      await api.delete(`/parcels/${id}`);
+
+      setParcels((prev) => prev.filter((parcel) => parcel._id !== id));
+
+      showMessage("Parcel deleted successfully!");
+    } catch (error: any) {
+      showMessage(
+        error.response?.data?.message || "Unable to delete parcel",
+        "error"
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // GET SINGLE TRIP
   const openTrip = async (id: string) => {
     try {
-      const res = await api.get(`/trips/triproute/${id}`);
-      setSelectedTrip(res.data.data);
+      const res = await api.get(`/trip/triproute/${id}`);
+
+      setSelectedTrip(res.data.trip || res.data.data || res.data);
     } catch (error: any) {
-      setMessage(error.response?.data?.message || "Unable to open trip");
+      showMessage(
+        error.response?.data?.message || "Unable to open trip",
+        "error"
+      );
     }
   };
 
-  const inputClass =
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm";
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+  const totalWeight = parcels.reduce(
+    (total, parcel) => total + Number(parcel.weight || 0),
+    0
+  );
+
+  const totalBudget = parcels.reduce(
+    (total, parcel) => total + Number(parcel.budget || 0),
+    0
+  );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 p-6">
+    <div className="min-h-screen bg-[#0b1020] px-4 py-8 text-white sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-8">
 
-      <h1 className="text-2xl font-semibold">Sender Dashboard</h1>
-
-      {message && (
-        <p className="rounded-md bg-gray-100 p-3 text-sm">
-          {message}
-        </p>
-      )}
-
-      {/* Send Parcel */}
-      <section className="rounded-lg border border-gray-200 p-5">
-        <div className="flex items-center justify-between">
+        {/* HEADER */}
+        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-lg font-semibold">Send a Parcel</h2>
-            <p className="text-sm text-gray-500">
-              Enter your parcel details.
+            <div className="mb-3 flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-lime-400 text-lg font-black text-[#0b1020]">
+                Q
+              </div>
+              <span className="text-sm font-bold tracking-tight">
+                Quick<span className="text-lime-400">&</span>Pick
+              </span>
+              <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-lime-300">
+                Sender panel
+              </span>
+            </div>
+
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Sender <span className="text-lime-400">Dashboard.</span>
+            </h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Send smarter. Find travellers. Deliver with confidence.
             </p>
           </div>
 
           <button
-            onClick={() => setShowParcelForm(!showParcelForm)}
-            className="flex items-center gap-2 rounded-md bg-black px-4 py-2 text-sm text-white"
+            onClick={openCreateForm}
+            className="flex items-center justify-center gap-2 rounded-xl bg-lime-400 px-5 py-3 text-sm font-bold text-[#0b1020] shadow-lg shadow-lime-400/10 transition hover:bg-lime-300"
           >
-            <Plus size={16} />
-            Send Parcel
+            <Plus size={18} />
+            Create a parcel
           </button>
-        </div>
+        </header>
 
-        {showParcelForm && (
-          <form onSubmit={handleSendParcel} className="mt-5 space-y-3">
-            <input
-              required
-              className={inputClass}
-              placeholder="Parcel name"
-              value={form.title}
-              onChange={(e) =>
-                setForm({ ...form, title: e.target.value })
-              }
-            />
+        {/* MESSAGE */}
+        {message && (
+          <div
+            className={`flex items-center justify-between rounded-xl border p-4 text-sm ${
+              messageType === "success"
+                ? "border-lime-400/20 bg-lime-400/10 text-lime-300"
+                : "border-red-400/20 bg-red-400/10 text-red-300"
+            }`}
+          >
+            {message}
+            <button onClick={() => setMessage("")}>
+              <X size={17} />
+            </button>
+          </div>
+        )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <input
-                required
-                className={inputClass}
-                placeholder="Pickup location"
-                value={form.from}
-                onChange={(e) =>
-                  setForm({ ...form, from: e.target.value })
-                }
-              />
-
-              <input
-                required
-                className={inputClass}
-                placeholder="Delivery location"
-                value={form.to}
-                onChange={(e) =>
-                  setForm({ ...form, to: e.target.value })
-                }
-              />
-
-              <input
-                required
-                type="date"
-                className={inputClass}
-                value={form.date}
-                onChange={(e) =>
-                  setForm({ ...form, date: e.target.value })
-                }
-              />
-
-              <input
-                required
-                type="number"
-                min="0.1"
-                step="0.1"
-                placeholder="Weight (kg)"
-                className={inputClass}
-                value={form.weight}
-                onChange={(e) =>
-                  setForm({ ...form, weight: e.target.value })
-                }
-              />
+        {/* OVERVIEW STATS */}
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={`${cardClass} p-5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">My parcels</span>
+              <Package className="text-lime-400" size={20} />
             </div>
+            <p className="mt-4 text-3xl font-bold">{parcels.length}</p>
+            <p className="mt-1 text-xs text-slate-500">Total created parcels</p>
+          </div>
 
-            <input
-              required
-              type="number"
-              min="0"
-              className={inputClass}
-              placeholder="Your budget (₹)"
-              value={form.budget}
-              onChange={(e) =>
-                setForm({ ...form, budget: e.target.value })
-              }
-            />
+          <div className={`${cardClass} p-5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Available trips</span>
+              <Truck className="text-lime-400" size={20} />
+            </div>
+            <p className="mt-4 text-3xl font-bold">{availableTrips.length}</p>
+            <p className="mt-1 text-xs text-slate-500">Trips with free capacity</p>
+          </div>
+
+          <div className={`${cardClass} p-5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Total parcel weight</span>
+              <Weight className="text-lime-400" size={20} />
+            </div>
+            <p className="mt-4 text-3xl font-bold">
+              {totalWeight.toFixed(1)}
+              <span className="ml-1 text-base text-slate-400">kg</span>
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Across your parcels</p>
+          </div>
+
+          <div className={`${cardClass} p-5`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Combined budget</span>
+              <Wallet className="text-lime-400" size={20} />
+            </div>
+            <p className="mt-4 text-3xl font-bold">
+              ₹{totalBudget.toLocaleString("en-IN")}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Your parcel budgets</p>
+          </div>
+        </section>
+
+        {/* QUICK ACTIONS */}
+        <section className={`${cardClass} p-5 sm:p-6`}>
+          <div className="mb-5">
+            <h2 className="text-lg font-bold">Quick actions</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Everything you need to manage your deliveries.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <button
+              onClick={openCreateForm}
+              className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0d1527] p-4 text-left transition hover:border-lime-400/40 hover:bg-[#151f32]"
+            >
+              <div className="rounded-xl bg-lime-400/10 p-3 text-lime-400">
+                <Plus size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Create parcel</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Add a new delivery
+                </p>
+              </div>
+              <ArrowRight className="ml-auto text-slate-500 transition group-hover:translate-x-1 group-hover:text-lime-400" size={17} />
+            </button>
 
             <button
-              type="submit"
-              className="rounded-md bg-black px-5 py-2 text-sm text-white"
+              onClick={() => {
+                setTripView("available");
+                document.getElementById("trips-section")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+              className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0d1527] p-4 text-left transition hover:border-lime-400/40 hover:bg-[#151f32]"
             >
-              Submit Parcel
-            </button>
-          </form>
-        )}
-      </section>
-
-      {/* Available Trips */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">Available Trips</h2>
-          <p className="text-sm text-gray-500">
-            Trips created by other travellers.
-          </p>
-        </div>
-
-        {loading ? (
-          <p className="text-sm text-gray-500">Loading trips...</p>
-        ) : trips.length === 0 ? (
-          <p className="text-sm text-gray-500">No trips available.</p>
-        ) : (
-          trips.map((trip) => (
-            <div
-              key={trip._id}
-              className="flex flex-col justify-between gap-3 rounded-lg border border-gray-200 p-4 sm:flex-row sm:items-center"
-            >
+              <div className="rounded-xl bg-lime-400/10 p-3 text-lime-400">
+                <Search size={20} />
+              </div>
               <div>
-                <h3 className="font-medium">
-                  {trip.from} → {trip.to}
-                </h3>
-
-                <p className="mt-1 text-sm text-gray-500">
-                  {new Date(trip.departureDate).toLocaleDateString("en-IN")}
-                  {" · "}
-                  {trip.departureTime}
+                <p className="text-sm font-semibold">Find a traveller</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Explore available trips
                 </p>
+              </div>
+              <ArrowRight className="ml-auto text-slate-500 transition group-hover:translate-x-1 group-hover:text-lime-400" size={17} />
+            </button>
 
-                <p className="mt-1 text-sm text-gray-500">
-                  {trip.transportMode} · {trip.availableCapacity} kg · ₹
-                  {trip.pricePerKg}/kg
+            <button
+              onClick={() =>
+                document.getElementById("my-parcels")?.scrollIntoView({
+                  behavior: "smooth",
+                })
+              }
+              className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0d1527] p-4 text-left transition hover:border-lime-400/40 hover:bg-[#151f32]"
+            >
+              <div className="rounded-xl bg-lime-400/10 p-3 text-lime-400">
+                <Boxes size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Manage parcels</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  View and update parcels
                 </p>
+              </div>
+              <ArrowRight className="ml-auto text-slate-500 transition group-hover:translate-x-1 group-hover:text-lime-400" size={17} />
+            </button>
+          </div>
+        </section>
+
+        {/* CREATE / EDIT PARCEL FORM */}
+        {showParcelForm && (
+          <section className={`${cardClass} p-5 sm:p-7`}>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-lime-400">
+                  Parcel details
+                </p>
+                <h2 className="mt-1 text-xl font-bold">
+                  {editingParcel ? "Update your parcel" : "Create a new parcel"}
+                </h2>
               </div>
 
               <button
-                onClick={() => openTrip(trip._id)}
-                className="flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm"
+                onClick={closeParcelForm}
+                className="rounded-lg border border-white/10 p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
               >
-                <Eye size={16} />
-                View Details
+                <X size={18} />
               </button>
             </div>
-          ))
-        )}
-      </section>
 
-      {/* Trip Details */}
-      {selectedTrip && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md space-y-3 rounded-lg bg-white p-6">
-            <div className="flex justify-between">
-              <h2 className="text-lg font-semibold">Trip Details</h2>
-              <button onClick={() => setSelectedTrip(null)}>✕</button>
+            <form onSubmit={handleParcelSubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-medium text-slate-400">
+                  Parcel name
+                </label>
+                <input
+                  required
+                  className={inputClass}
+                  placeholder="e.g. Documents, Electronics, Clothes"
+                  value={form.title}
+                  onChange={(e) =>
+                    setForm({ ...form, title: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-slate-400">
+                    Pickup location
+                  </label>
+                  <input
+                    required
+                    className={inputClass}
+                    placeholder="From city"
+                    value={form.from}
+                    onChange={(e) =>
+                      setForm({ ...form, from: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-slate-400">
+                    Delivery location
+                  </label>
+                  <input
+                    required
+                    className={inputClass}
+                    placeholder="To city"
+                    value={form.to}
+                    onChange={(e) =>
+                      setForm({ ...form, to: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-slate-400">
+                    Delivery date
+                  </label>
+                  <input
+                    required
+                    type="date"
+                    min={new Date().toISOString().slice(0, 10)}
+                    className={inputClass}
+                    value={form.date}
+                    onChange={(e) =>
+                      setForm({ ...form, date: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-xs font-medium text-slate-400">
+                    Parcel weight (kg)
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    placeholder="e.g. 2.5"
+                    className={inputClass}
+                    value={form.weight}
+                    onChange={(e) =>
+                      setForm({ ...form, weight: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-medium text-slate-400">
+                  Your budget (₹)
+                </label>
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Enter your budget"
+                  className={inputClass}
+                  value={form.budget}
+                  onChange={(e) =>
+                    setForm({ ...form, budget: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center gap-2 rounded-xl bg-lime-400 px-5 py-3 text-sm font-bold text-[#0b1020] transition hover:bg-lime-300 disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                  {submitting
+                    ? "Saving..."
+                    : editingParcel
+                      ? "Update parcel"
+                      : "Create parcel"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeParcelForm}
+                  className="rounded-xl border border-white/10 px-5 py-3 text-sm text-slate-300 transition hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
+        {/* MY PARCELS */}
+        <section id="my-parcels" className="space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-lime-400">
+                Your activity
+              </p>
+              <h2 className="mt-1 text-2xl font-bold">My parcels</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Track and manage the parcels you have created.
+              </p>
             </div>
 
-            <p>{selectedTrip.from} → {selectedTrip.to}</p>
-            <p>Date: {new Date(selectedTrip.departureDate).toLocaleDateString("en-IN")}</p>
-            <p>Time: {selectedTrip.departureTime}</p>
-            <p>Transport: {selectedTrip.transportMode}</p>
-            <p>Capacity: {selectedTrip.availableCapacity} kg</p>
-            <p>Price: ₹{selectedTrip.pricePerKg}/kg</p>
-            <p>Description: {selectedTrip.description || "No description"}</p>
+            <button
+              onClick={getMyParcels}
+              disabled={loadingParcels}
+              className="rounded-xl border border-white/10 bg-[#111a2e] p-3 text-slate-300 transition hover:border-lime-400/30 hover:text-lime-400"
+              title="Refresh parcels"
+            >
+              <RefreshCw
+                size={17}
+                className={loadingParcels ? "animate-spin" : ""}
+              />
+            </button>
+          </div>
+
+          {loadingParcels ? (
+            <div className={`${cardClass} p-10 text-center text-sm text-slate-400`}>
+              Loading your parcels...
+            </div>
+          ) : parcels.length === 0 ? (
+            <div className={`${cardClass} px-5 py-12 text-center`}>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-400/10 text-lime-400">
+                <Package size={27} />
+              </div>
+              <h3 className="font-semibold">No parcels yet</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                Create your first parcel and start exploring travellers.
+              </p>
+              <button
+                onClick={openCreateForm}
+                className="mt-5 rounded-xl bg-lime-400 px-5 py-2.5 text-sm font-bold text-[#0b1020] transition hover:bg-lime-300"
+              >
+                Create your first parcel
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {parcels.map((parcel) => (
+                <article
+                  key={parcel._id}
+                  className={`${cardClass} p-5 transition duration-200 hover:-translate-y-1 hover:border-lime-400/20`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-lime-400/10 p-3 text-lime-400">
+                        <Package size={21} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{parcel.title}</h3>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Created parcel
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs capitalize text-slate-300">
+                      {(parcel.status || "pending").replace("_", " ")}
+                    </span>
+                  </div>
+
+                  <div className="my-5 flex items-center gap-3 rounded-xl bg-[#0d1527] p-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                        Pickup
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold">
+                        {parcel.from}
+                      </p>
+                    </div>
+
+                    <ArrowRight className="shrink-0 text-lime-400" size={18} />
+
+                    <div className="min-w-0 flex-1 text-right">
+                      <p className="text-[11px] uppercase tracking-wider text-slate-500">
+                        Delivery
+                      </p>
+                      <p className="mt-1 truncate text-sm font-semibold">
+                        {parcel.to}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <CalendarDays size={15} className="mb-2 text-lime-400" />
+                      <p className="text-[11px] text-slate-500">Date</p>
+                      <p className="mt-1 text-xs font-medium">
+                        {formatDate(parcel.date)}
+                      </p>
+                    </div>
+                    <div>
+                      <Weight size={15} className="mb-2 text-lime-400" />
+                      <p className="text-[11px] text-slate-500">Weight</p>
+                      <p className="mt-1 text-xs font-medium">
+                        {parcel.weight} kg
+                      </p>
+                    </div>
+                    <div>
+                      <IndianRupee size={15} className="mb-2 text-lime-400" />
+                      <p className="text-[11px] text-slate-500">Budget</p>
+                      <p className="mt-1 text-xs font-medium">
+                        ₹{parcel.budget}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex gap-2 border-t border-white/[0.07] pt-4">
+                    <button
+                      onClick={() => openEditForm(parcel)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/5"
+                    >
+                      <Pencil size={14} />
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteParcel(parcel._id)}
+                      disabled={deletingId === parcel._id}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-red-400/20 py-2.5 text-xs font-medium text-red-300 transition hover:bg-red-400/10 disabled:opacity-50"
+                    >
+                      <Trash2 size={14} />
+                      {deletingId === parcel._id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ALL TRIPS + AVAILABLE TRIPS */}
+        <section id="trips-section" className="space-y-5">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-lime-400">
+                Discover travellers
+              </p>
+              <h2 className="mt-1 text-2xl font-bold">Explore trips</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Find travellers heading towards your delivery destination.
+              </p>
+            </div>
+
+            <button
+              onClick={getTrips}
+              disabled={loadingTrips}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#111a2e] px-4 py-2.5 text-sm text-slate-300 transition hover:border-lime-400/30 hover:text-lime-400"
+            >
+              <RefreshCw
+                size={15}
+                className={loadingTrips ? "animate-spin" : ""}
+              />
+              Refresh trips
+            </button>
+          </div>
+
+          {/* TRIP TABS */}
+          <div className="flex w-fit gap-1 rounded-xl border border-white/[0.08] bg-[#111a2e] p-1">
+            <button
+              onClick={() => setTripView("all")}
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                tripView === "all"
+                  ? "bg-lime-400 text-[#0b1020]"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              All trips ({trips.length})
+            </button>
+
+            <button
+              onClick={() => setTripView("available")}
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                tripView === "available"
+                  ? "bg-lime-400 text-[#0b1020]"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Available ({availableTrips.length})
+            </button>
+          </div>
+
+          {loadingTrips ? (
+            <div className={`${cardClass} p-10 text-center text-sm text-slate-400`}>
+              Finding trips for you...
+            </div>
+          ) : displayedTrips.length === 0 ? (
+            <div className={`${cardClass} px-5 py-12 text-center`}>
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-lime-400/10 text-lime-400">
+                <Truck size={27} />
+              </div>
+              <h3 className="font-semibold">No trips found</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                {tripView === "available"
+                  ? "There are no upcoming trips with available capacity right now."
+                  : "Traveller trips will appear here when they are created."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {displayedTrips.map((trip) => (
+                <article
+                  key={trip._id}
+                  className={`${cardClass} p-5 transition duration-200 hover:-translate-y-1 hover:border-lime-400/20`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-xs font-medium text-lime-400">
+                      <span className="h-2 w-2 rounded-full bg-lime-400" />
+                      {trip.availableCapacity > 0
+                        ? "Capacity available"
+                        : "Full"}
+                    </span>
+
+                    <span className="rounded-lg bg-[#0d1527] px-3 py-1.5 text-xs capitalize text-slate-300">
+                      {trip.transportMode}
+                    </span>
+                  </div>
+
+                  <div className="my-6 flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-slate-500">FROM</p>
+                      <h3 className="mt-1 truncate text-lg font-bold">
+                        {trip.from}
+                      </h3>
+                    </div>
+
+                    <div className="flex shrink-0 flex-col items-center text-lime-400">
+                      <div className="h-px w-12 bg-lime-400/40" />
+                      <Truck size={19} className="my-1" />
+                      <div className="h-px w-12 bg-lime-400/40" />
+                    </div>
+
+                    <div className="min-w-0 flex-1 text-right">
+                      <p className="text-xs text-slate-500">TO</p>
+                      <h3 className="mt-1 truncate text-lg font-bold">
+                        {trip.to}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 rounded-xl bg-[#0d1527] p-3">
+                    <div>
+                      <CalendarDays size={15} className="mb-2 text-lime-400" />
+                      <p className="text-[11px] text-slate-500">Departure</p>
+                      <p className="mt-1 text-xs font-medium">
+                        {formatDate(trip.departureDate)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Clock3 size={15} className="mb-2 text-lime-400" />
+                      <p className="text-[11px] text-slate-500">Time</p>
+                      <p className="mt-1 text-xs font-medium">
+                        {trip.departureTime}
+                      </p>
+                    </div>
+
+                    <div>
+                      <Weight size={15} className="mb-2 text-lime-400" />
+                      <p className="text-[11px] text-slate-500">Capacity</p>
+                      <p className="mt-1 text-xs font-medium">
+                        {trip.availableCapacity} kg
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] text-slate-500">Traveller price</p>
+                      <p className="mt-1 text-xl font-bold text-lime-400">
+                        ₹{trip.pricePerKg}
+                        <span className="ml-1 text-xs font-normal text-slate-400">
+                          / kg
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => navigate(`/traveller/${trip.traveller}`)}
+                        className="rounded-lg border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/5"
+                        title="View traveller profile"
+                      >
+                        <UserRound size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => openTrip(trip._id)}
+                        className="flex items-center gap-2 rounded-lg bg-lime-400 px-4 py-2.5 text-xs font-bold text-[#0b1020] transition hover:bg-lime-300"
+                      >
+                        <Eye size={15} />
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* NEAREST TRIPS — UI PLACEHOLDER ONLY */}
+        <section className={`${cardClass} relative overflow-hidden p-6 sm:p-8`}>
+          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-lime-400/[0.04] blur-3xl" />
+
+          <div className="relative">
+            <div className="flex items-center gap-2 text-lime-400">
+              <MapPin size={17} />
+              <span className="text-xs font-semibold uppercase tracking-widest">
+                Location based discovery
+              </span>
+            </div>
+
+            <h2 className="mt-3 text-2xl font-bold">Nearest trips</h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+              Discover travellers and delivery routes around your selected
+              locations.
+            </p>
+
+            {/* Build your nearest-trips feature here */}
+            <div className="mt-6 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#0d1527] text-center">
+              <MapPin size={28} className="text-slate-500" />
+              <p className="mt-3 text-sm font-semibold text-slate-300">
+                Nearest trips will appear here
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Your location-based trip discovery UI goes here.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* AI ASSISTANCE */}
+        <section className="relative overflow-hidden rounded-2xl border border-lime-400/20 bg-gradient-to-br from-[#17243a] via-[#111a2e] to-[#111a2e] p-6 sm:p-8">
+          <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full bg-lime-400/[0.08] blur-3xl" />
+
+          <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-lime-400">
+                <Sparkles size={19} />
+                <span className="text-xs font-bold uppercase tracking-widest">
+                  Quick & Pick AI
+                </span>
+                <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-2.5 py-1 text-[10px] font-semibold text-lime-300">
+                  Coming soon
+                </span>
+              </div>
+
+              <h2 className="mt-4 text-2xl font-bold sm:text-3xl">
+                Your smart delivery assistant.
+              </h2>
+
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
+                Get help finding suitable trips, understanding delivery costs,
+                preparing parcel details and making smarter delivery decisions.
+              </p>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[
+                  "Trip suggestions",
+                  "Budget guidance",
+                  "Delivery assistance",
+                ].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center self-start rounded-3xl border border-lime-400/20 bg-lime-400/10 text-lime-400 md:self-center">
+              <Sparkles size={42} />
+            </div>
+          </div>
+        </section>
+
+        {/* TRUST / SELLER REMINDER */}
+        <section className="grid gap-4 sm:grid-cols-3">
+          <div className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-[#111a2e] p-4">
+            <CircleCheck className="mt-0.5 shrink-0 text-lime-400" size={19} />
+            <div>
+              <p className="text-sm font-semibold">Clear parcel details</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Keep your pickup, delivery and weight information accurate.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-[#111a2e] p-4">
+            <UserRound className="mt-0.5 shrink-0 text-lime-400" size={19} />
+            <div>
+              <p className="text-sm font-semibold">Check traveller profiles</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Review traveller information before making arrangements.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-[#111a2e] p-4">
+            <Wallet className="mt-0.5 shrink-0 text-lime-400" size={19} />
+            <div>
+              <p className="text-sm font-semibold">Set a clear budget</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Decide your delivery budget before selecting a trip.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="border-t border-white/[0.07] pt-6 text-center text-xs text-slate-500">
+          © {new Date().getFullYear()} Quick & Pick. Send smarter, travel together.
+        </footer>
+      </div>
+
+      {/* TRIP DETAILS MODAL */}
+      {selectedTrip && (
+        <div
+          onClick={() => setSelectedTrip(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg space-y-5 rounded-2xl border border-white/10 bg-[#111a2e] p-6 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-lime-400">
+                  Traveller information
+                </p>
+                <h2 className="mt-1 text-xl font-bold">Trip details</h2>
+              </div>
+
+              <button
+                onClick={() => setSelectedTrip(null)}
+                className="rounded-lg border border-white/10 p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-white/[0.07] bg-[#0d1527] p-5 text-center">
+              <p className="text-xl font-bold">
+                {selectedTrip.from}
+                <span className="mx-3 text-lime-400">→</span>
+                {selectedTrip.to}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-xl bg-[#0d1527] p-4">
+                <CalendarDays className="mb-3 text-lime-400" size={18} />
+                <p className="text-xs text-slate-500">Departure date</p>
+                <p className="mt-1 text-sm font-semibold">
+                  {formatDate(selectedTrip.departureDate)}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-[#0d1527] p-4">
+                <Clock3 className="mb-3 text-lime-400" size={18} />
+                <p className="text-xs text-slate-500">Departure time</p>
+                <p className="mt-1 text-sm font-semibold">
+                  {selectedTrip.departureTime}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-[#0d1527] p-4">
+                <Truck className="mb-3 text-lime-400" size={18} />
+                <p className="text-xs text-slate-500">Transport</p>
+                <p className="mt-1 text-sm font-semibold capitalize">
+                  {selectedTrip.transportMode}
+                </p>
+              </div>
+
+              <div className="rounded-xl bg-[#0d1527] p-4">
+                <Weight className="mb-3 text-lime-400" size={18} />
+                <p className="text-xs text-slate-500">Available capacity</p>
+                <p className="mt-1 text-sm font-semibold">
+                  {selectedTrip.availableCapacity} kg
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-lime-400/20 bg-lime-400/[0.06] p-4">
+              <p className="text-xs text-slate-400">Traveller price</p>
+              <p className="mt-1 text-2xl font-bold text-lime-400">
+                ₹{selectedTrip.pricePerKg}
+                <span className="ml-1 text-sm font-normal text-slate-400">
+                  / kg
+                </span>
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-slate-500">Description</p>
+              <p className="mt-2 text-sm leading-6 text-slate-300">
+                {selectedTrip.description || "No description provided."}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setSelectedTrip(null)}
+              className="w-full rounded-xl bg-lime-400 py-3 text-sm font-bold text-[#0b1020] transition hover:bg-lime-300"
+            >
+              Close details
+            </button>
           </div>
         </div>
       )}

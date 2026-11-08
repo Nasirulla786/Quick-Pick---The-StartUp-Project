@@ -9,6 +9,7 @@ import OTP from '@/pages/auth/OTP'
 import { useSelector } from 'react-redux'
 import type { RootState } from '@/redux/stores/store'
 import TravellerPage from '@/pages/entity/TravellerPage'
+import TravelerId from '@/pages/entity/TravelerId'
 
 
 const RouterService = () => {
@@ -23,6 +24,7 @@ const RouterService = () => {
                 <Route path="/select-entity" element={<SelectEntity />} />
                 <Route path="/otp" element={<OTP />} />
                 <Route path="/traveller-page" element={<TravellerPage />} />
+                <Route path="/traveller/:id" element={<TravelerId />} />
 
             </Routes>
 

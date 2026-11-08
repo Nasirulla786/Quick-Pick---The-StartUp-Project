@@ -7,17 +7,18 @@ import express from "express";
 import dotenv from "dotenv";
 
 import parcelRouter from "./routes/parcel.routes.js";
+import cookieParser from "cookie-parser";
 
 dotenv.config();
 
 const app = express();
 
 app.use(express.json());
-
+app.use(cookieParser())
 // Parcel routes
 app.use("/", parcelRouter);
 
-const PORT = process.env.PORT || 5003;
+const PORT = process.env.PORT || 4003;
 
 const startServer = async () => {
   try {

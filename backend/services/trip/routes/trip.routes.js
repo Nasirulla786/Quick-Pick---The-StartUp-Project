@@ -3,8 +3,9 @@ import express from "express";
 
 
 
-import isAuth from "../../auth/middleware/isAuth.js";
+
 import { createTrip, deleteTrip, getAllTrips, getMyTrips, getTripById, searchTrips, updateTrip } from "../controllers/trip.controller.js";
+import isAuth from "../../auth/middleware/isAuth.js";
 
 const tripRouter = express.Router();
 

@@ -1,5 +1,5 @@
-
 import express from "express";
+import isAuth from "../../auth/middleware/isAuth.js";
 
 import {
   createParcel,
@@ -10,12 +10,9 @@ import {
 
 const parcelRouter = express.Router();
 
-parcelRouter.post("/create", createParcel);
-
-parcelRouter.get("/my-parcels", getMyParcels);
-
-parcelRouter.put("/:id", updateParcel);
-
-parcelRouter.delete("/:id", deleteParcel);
+parcelRouter.post("/create", isAuth, createParcel);
+parcelRouter.get("/my-parcels", isAuth, getMyParcels);
+parcelRouter.put("/:id", isAuth, updateParcel);
+parcelRouter.delete("/:id", isAuth, deleteParcel);
 
 export default parcelRouter;

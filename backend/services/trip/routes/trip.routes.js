@@ -20,6 +20,6 @@ tripRouter.get("/triproute/:id", getTripById);
 
 tripRouter.put("/triproute/:id", isAuth, updateTrip);
 
-tripRouter.delete("/triproute/:id", isAuth, deleteTrip);
+tripRouter.get("/delete/:id", isAuth, deleteTrip);
 
 export default tripRouter;

@@ -1,7 +1,5 @@
 import Trip from "../model/trip.model.js";
 
-
-
 // 1. CREATE TRIP
 export const createTrip = async (req, res) => {
   try {
@@ -67,7 +65,6 @@ export const createTrip = async (req, res) => {
       message: "Trip created successfully",
       trip,
     });
-
   } catch (error) {
     console.log("Create trip error:", error);
 
@@ -78,22 +75,19 @@ export const createTrip = async (req, res) => {
   }
 };
 
-
 // 2. GET ALL AVAILABLE TRIPS
 export const getAllTrips = async (req, res) => {
   try {
     const trips = await Trip.find({
       status: "available",
       departureDate: { $gte: new Date() },
-    })
-      .sort({ departureDate: 1 });
+    }).sort({ departureDate: 1 });
 
     return res.status(200).json({
       success: true,
       totalTrips: trips.length,
       trips,
     });
-
   } catch (error) {
     console.log("Get all trips error:", error);
 
@@ -103,7 +97,6 @@ export const getAllTrips = async (req, res) => {
     });
   }
 };
-
 
 // 3. GET MY TRIPS
 export const getMyTrips = async (req, res) => {
@@ -117,7 +110,6 @@ export const getMyTrips = async (req, res) => {
       totalTrips: trips.length,
       trips,
     });
-
   } catch (error) {
     console.log("Get my trips error:", error);
 
@@ -128,13 +120,12 @@ export const getMyTrips = async (req, res) => {
   }
 };
 
-
 // 4. GET SINGLE TRIP
 export const getTripById = async (req, res) => {
   try {
-    const { tripId } = req.params;
+    const { id } = req.params;
 
-    const trip = await Trip.findById(tripId);
+    const trip = await Trip.findById(id);
 
     if (!trip) {
       return res.status(404).json({
@@ -147,7 +138,6 @@ export const getTripById = async (req, res) => {
       success: true,
       trip,
     });
-
   } catch (error) {
     console.log("Get trip error:", error);
 
@@ -157,7 +147,6 @@ export const getTripById = async (req, res) => {
     });
   }
 };
-
 
 // 5. SEARCH TRIPS
 export const searchTrips = async (req, res) => {
@@ -202,15 +191,13 @@ export const searchTrips = async (req, res) => {
       };
     }
 
-    const trips = await Trip.find(filter)
-      .sort({ departureDate: 1 });
+    const trips = await Trip.find(filter).sort({ departureDate: 1 });
 
     return res.status(200).json({
       success: true,
       totalTrips: trips.length,
       trips,
     });
-
   } catch (error) {
     console.log("Search trips error:", error);
 
@@ -220,7 +207,6 @@ export const searchTrips = async (req, res) => {
     });
   }
 };
-
 
 // 6. UPDATE TRIP
 export const updateTrip = async (req, res) => {
@@ -268,7 +254,6 @@ export const updateTrip = async (req, res) => {
       message: "Trip updated successfully",
       trip,
     });
-
   } catch (error) {
     console.log("Update trip error:", error);
 
@@ -279,13 +264,12 @@ export const updateTrip = async (req, res) => {
   }
 };
 
-
 // 7. DELETE TRIP
 export const deleteTrip = async (req, res) => {
   try {
-    const { tripId } = req.params;
+    const { id } = req.params;
 
-    const trip = await Trip.findById(tripId);
+    const trip = await Trip.findById(id);
 
     if (!trip) {
       return res.status(404).json({
@@ -308,7 +292,6 @@ export const deleteTrip = async (req, res) => {
       success: true,
       message: "Trip deleted successfully",
     });
-
   } catch (error) {
     console.log("Delete trip error:", error);
 

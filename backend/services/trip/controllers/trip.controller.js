@@ -1,4 +1,16 @@
+import redis from "../../../shared/redis.js";
 import Trip from "../model/trip.model.js";
+
+// Helper: Clear trip-related cache
+const clearTripCache = async () => {
+  await redis.del("trip:all");
+
+  const keys = await redis.keys("trip:search:*");
+
+  if (keys.length > 0) {
+    await redis.del(keys);
+  }
+};
 
 // 1. CREATE TRIP
 export const createTrip = async (req, res) => {
@@ -60,6 +72,8 @@ export const createTrip = async (req, res) => {
       description,
     });
 
+    await clearTripCache();
+
     return res.status(201).json({
       success: true,
       message: "Trip created successfully",
@@ -78,16 +92,28 @@ export const createTrip = async (req, res) => {
 // 2. GET ALL AVAILABLE TRIPS
 export const getAllTrips = async (req, res) => {
   try {
+    const cached = await redis.get("trip:all");
+
+    if (cached) {
+      return res.status(200).json(JSON.parse(cached));
+    }
+
     const trips = await Trip.find({
       status: "available",
       departureDate: { $gte: new Date() },
     }).sort({ departureDate: 1 });
 
-    return res.status(200).json({
+    const response = {
       success: true,
       totalTrips: trips.length,
       trips,
+    };
+
+    await redis.set("trip:all", JSON.stringify(response), {
+      EX: 60,
     });
+
+    return res.status(200).json(response);
   } catch (error) {
     console.log("Get all trips error:", error);
 
@@ -191,13 +217,29 @@ export const searchTrips = async (req, res) => {
       };
     }
 
+    // Redis cache lookup
+    const cacheKey = `trip:search:${JSON.stringify(req.query)}`;
+
+    const cached = await redis.get(cacheKey);
+
+    if (cached) {
+      return res.status(200).json(JSON.parse(cached));
+    }
+
     const trips = await Trip.find(filter).sort({ departureDate: 1 });
 
-    return res.status(200).json({
+    const response = {
       success: true,
       totalTrips: trips.length,
       trips,
+    };
+
+    // Store search result for 60 seconds
+    await redis.set(cacheKey, JSON.stringify(response), {
+      EX: 60,
     });
+
+    return res.status(200).json(response);
   } catch (error) {
     console.log("Search trips error:", error);
 
@@ -249,6 +291,8 @@ export const updateTrip = async (req, res) => {
 
     await trip.save();
 
+    await clearTripCache();
+
     return res.status(200).json({
       success: true,
       message: "Trip updated successfully",
@@ -287,6 +331,8 @@ export const deleteTrip = async (req, res) => {
     }
 
     await trip.deleteOne();
+
+    await clearTripCache();
 
     return res.status(200).json({
       success: true,

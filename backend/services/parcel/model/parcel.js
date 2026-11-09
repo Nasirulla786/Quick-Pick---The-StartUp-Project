@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const parcelSchema = new mongoose.Schema(
@@ -49,8 +48,35 @@ const parcelSchema = new mongoose.Schema(
       enum: ["pending", "in_transit", "delivered", "cancelled"],
       default: "pending",
     },
+
+    // Traveller receiving this request
+    traveller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // Trip selected by sender
+    trip: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Trip",
+      default: null,
+    },
+
+    requestStatus: {
+      type: String,
+      enum: ["pending", "accepted", "rejected"],
+      default: "pending",
+    },
+
+    // Parcel delivery status
+    status: {
+      type: String,
+      enum: ["pending", "in_transit", "delivered", "cancelled"],
+      default: "pending",
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Parcel = mongoose.model("Parcel", parcelSchema);

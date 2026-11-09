@@ -1,6 +1,6 @@
+import { response } from "express";
 import redis from "../../../shared/redis.js";
 import Parcel from "../model/parcel.js";
-
 
 const CACHE_TTL = 300;
 
@@ -10,8 +10,8 @@ const getCacheKey = (userId) => `parcel:my-parcels:${userId}`;
 // CREATE PARCEL
 export const createParcel = async (req, res) => {
   try {
-    const userId = req.userId
-    console.log("user id",userId);
+    const userId = req.userId;
+    console.log("user id", userId);
 
     if (!userId) {
       return res.status(401).json({
@@ -29,8 +29,7 @@ export const createParcel = async (req, res) => {
       });
     }
 
-    const parcel = await Parcel
-    .create({
+    const parcel = await Parcel.create({
       sender: userId,
       title,
       from,
@@ -58,7 +57,7 @@ export const createParcel = async (req, res) => {
 // GET MY PARCELS
 export const getMyParcels = async (req, res) => {
   try {
-    const userId = req.userId
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -86,12 +85,7 @@ export const getMyParcels = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     // Save in Redis for 5 minutes
-    await redis.set(
-      cacheKey,
-      JSON.stringify(parcels),
-      "EX",
-      CACHE_TTL
-    );
+    await redis.set(cacheKey, JSON.stringify(parcels), "EX", CACHE_TTL);
 
     return res.status(200).json({
       success: true,
@@ -109,7 +103,7 @@ export const getMyParcels = async (req, res) => {
 // UPDATE PARCEL
 export const updateParcel = async (req, res) => {
   try {
-    const userId = req.userId
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -130,14 +124,7 @@ export const updateParcel = async (req, res) => {
       });
     }
 
-    const allowedFields = [
-      "title",
-      "from",
-      "to",
-      "date",
-      "weight",
-      "budget",
-    ];
+    const allowedFields = ["title", "from", "to", "date", "weight", "budget"];
 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -165,7 +152,7 @@ export const updateParcel = async (req, res) => {
 // DELETE PARCEL
 export const deleteParcel = async (req, res) => {
   try {
-    const userId = req.userId
+    const userId = req.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -195,6 +182,29 @@ export const deleteParcel = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const findParcel = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const myParcel = await Parcel.findById(id);
+
+    if (!myParcel) {
+      return res.status(404).json({
+        message: "Parcel not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      parcel: myParcel,
+    });
+  } catch (error) {
+    return res.status(500).json({
       message: error.message,
     });
   }

@@ -1,15 +1,12 @@
-
 import mongoose from "mongoose";
 
 const tripSchema = new mongoose.Schema(
   {
-
     traveller: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-
 
     from: {
       type: String,
@@ -33,20 +30,17 @@ const tripSchema = new mongoose.Schema(
       required: true,
     },
 
-
     transportMode: {
       type: String,
       enum: ["car", "bike", "bus", "train", "flight", "other"],
       required: true,
     },
 
-
     availableCapacity: {
       type: Number,
       required: true,
       min: 0.1,
     },
-
 
     pricePerKg: {
       type: Number,
@@ -61,16 +55,23 @@ const tripSchema = new mongoose.Schema(
       default: "",
     },
 
-
     status: {
       type: String,
       enum: ["available", "booked", "completed", "cancelled"],
       default: "available",
     },
+
+    parcels: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Parcel",
+        default:null
+      },
+    ],
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 tripSchema.index({

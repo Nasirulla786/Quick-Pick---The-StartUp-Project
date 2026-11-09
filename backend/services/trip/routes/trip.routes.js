@@ -6,6 +6,7 @@
 
     import { createTrip, deleteTrip, getAllTrips, getMyTrips, getTravellerById, getTravellerTrips, getTripById, searchTrips, updateTrip } from "../controllers/trip.controller.js";
     import isAuth from "../../auth/middleware/isAuth.js";
+import { requestParcel } from "../controllers/request.controller.js";
 
     const tripRouter = express.Router();
 
@@ -26,5 +27,6 @@
 
 
     tripRouter.get("/traveller-trip/:id", isAuth, getTravellerTrips);
+    tripRouter.get("/request-parcel/:tripId", isAuth, requestParcel);
 
     export default tripRouter;

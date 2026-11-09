@@ -1,5 +1,4 @@
 import redis from "../../../shared/redis.js";
-import User from "../../auth/models/auth.model.js";
 import Trip from "../model/trip.model.js";
 
 // Helper: Clear trip-related cache
@@ -366,26 +365,13 @@ export const getTravellerById = async (req, res) => {
   }
 };
 
-
-
-
-
 import mongoose from "mongoose";
 
 export const getTravellerTrips = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // console.log("========== TRIP DEBUG ==========");
-    // console.log("Received ID:", id);
-    // console.log("Valid ObjectId:", mongoose.isValidObjectId(id));
-    // console.log("Connected DB:", Trip.db.name);
-    // console.log("Collection:", Trip.collection.name);
-
     const trip = await Trip.findById(id).lean();
-
-    // console.log("Found Trip:", trip);
-    // console.log("================================");
 
     if (!trip) {
       return res.status(404).json({
@@ -398,7 +384,6 @@ export const getTravellerTrips = async (req, res) => {
       success: true,
       trip,
     });
-
   } catch (error) {
     console.error("Trip Error:", error);
 
@@ -408,3 +393,5 @@ export const getTravellerTrips = async (req, res) => {
     });
   }
 };
+
+

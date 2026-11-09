@@ -40,7 +40,7 @@ type Trip = {
   traveller: string;
 };
 
-type Parcel = {
+export type Parcel = {
   _id: string;
   title: string;
   from: string;
@@ -891,7 +891,7 @@ export const SenderPage = () => {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => navigate(`/traveller/${trip.traveller}`)}
+                        onClick={() => navigate(`/traveller/${trip._id}`)}
                         className="rounded-lg border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-300 transition hover:bg-white/5"
                         title="View traveller profile"
                       >

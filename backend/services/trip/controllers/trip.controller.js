@@ -1,4 +1,5 @@
 import redis from "../../../shared/redis.js";
+import User from "../../auth/models/auth.model.js";
 import Trip from "../model/trip.model.js";
 
 // Helper: Clear trip-related cache
@@ -92,8 +93,6 @@ export const createTrip = async (req, res) => {
 // 2. GET ALL AVAILABLE TRIPS
 export const getAllTrips = async (req, res) => {
   try {
-
-
     const cached = await redis.get("trip:all");
 
     if (cached) {
@@ -102,15 +101,11 @@ export const getAllTrips = async (req, res) => {
 
     const trips = await Trip.find({});
 
-    console.log("this is trips",trips);
-
     const response = {
       success: true,
       totalTrips: trips.length,
       trips,
     };
-
-    console.log(response);
 
     await redis.set("trip:all", JSON.stringify(response.trips));
 
@@ -345,6 +340,71 @@ export const deleteTrip = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to delete trip",
+    });
+  }
+};
+
+// Get Traveller By ID
+export const getTravellerById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const response = await fetch(
+      `${process.env.AUTH_SERVICE_URL}/internal/traveller/${id}`,
+    );
+
+    const data = await response.json();
+
+    return res.status(response.status).json(data);
+  } catch (error) {
+    console.error("Get Traveller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch traveller details",
+    });
+  }
+};
+
+
+
+
+
+import mongoose from "mongoose";
+
+export const getTravellerTrips = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // console.log("========== TRIP DEBUG ==========");
+    // console.log("Received ID:", id);
+    // console.log("Valid ObjectId:", mongoose.isValidObjectId(id));
+    // console.log("Connected DB:", Trip.db.name);
+    // console.log("Collection:", Trip.collection.name);
+
+    const trip = await Trip.findById(id).lean();
+
+    // console.log("Found Trip:", trip);
+    // console.log("================================");
+
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: "Trip not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      trip,
+    });
+
+  } catch (error) {
+    console.error("Trip Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
     });
   }
 };

@@ -25,7 +25,6 @@ const RouterService = () => {
                 <Route path="/otp" element={<OTP />} />
                 <Route path="/traveller-page" element={<TravellerPage />} />
                 <Route path="/traveller/:id" element={<TravelerId />} />
-
             </Routes>
 
         </>

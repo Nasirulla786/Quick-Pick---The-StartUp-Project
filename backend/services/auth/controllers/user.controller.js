@@ -74,3 +74,36 @@ export const updateController = async (req, res) => {
     });
   }
 };
+
+
+
+
+export const getTravellerById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const traveller = await User.findOne({
+            _id: id,
+            entity: "traveller",
+        }).select("name email photoURL entity");
+
+        if (!traveller) {
+            return res.status(404).json({
+                success: false,
+                message: "Traveller not found",
+            });
+        }
+
+        return res.status(200).json({
+            traveller,
+        });
+
+    } catch (error) {
+        console.error("Get Traveller Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};

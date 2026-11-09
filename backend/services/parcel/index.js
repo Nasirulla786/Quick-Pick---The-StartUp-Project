@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 4003;
 
 const startServer = async () => {
   try {
-    connectDB()
+   await connectDB()
 
     app.listen(PORT, () => {
       console.log(`Parcel Service running on port ${PORT}`);

@@ -132,6 +132,8 @@ export const SenderPage = () => {
         : res.data.data || res.data.parcels || [];
 
       setParcels(parcelData);
+
+      
     } catch (error: any) {
       showMessage(
         error.response?.data?.message || "Unable to load parcels",

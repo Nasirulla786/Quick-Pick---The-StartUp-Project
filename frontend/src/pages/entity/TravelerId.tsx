@@ -99,7 +99,7 @@ const formatValue = (value: any): string => {
 
 const TravellerTrips = () => {
   const { id } = useParams<{ id: string }>();
-  console.log(id); //proeper trip ki id aree hai
+
   const navigate = useNavigate();
 
   const [trip, setTrip] = useState<TripData | null>(null);

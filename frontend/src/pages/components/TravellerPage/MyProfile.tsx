@@ -55,7 +55,6 @@ const MyProfile = () => {
         }
 
         const res = await api.post("/auth/user/update-profile", formData);
-        console.log("this is  res", res.data.user);
         dispatch(setUserData(res.data.user))
 
 
@@ -114,7 +113,7 @@ const MyProfile = () => {
                         }
 
                         <input type="file" hidden ref={imageRef} accept="image/*" onChange={(e) => {
-                            console.log(e.target);
+                         
                             const file = e.target.files?.[0];
 
                             if (file) {

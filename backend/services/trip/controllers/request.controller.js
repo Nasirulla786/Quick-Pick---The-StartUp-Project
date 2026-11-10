@@ -1,12 +1,30 @@
+import Trip from "../model/trip.model.js";
+
 export const requestParcel = async (req, res) => {
   try {
+
     const { id } = req.body; // Parcel ID
     const { tripId } = req.params;
 
+
     // 1. Parcel fetch karo
     const response = await fetch(
-      `http://localhost:5003/parcel/${id}`
+      `http://localhost:5003/parcel/${id}` ,{
+        headers:{
+          Cookie :req.headers.cookie || "",
+        }
+      }
     );
+
+
+
+    const data = await response.json();
+
+console.log("STATUS:", response.status);
+console.log("RESPONSE:", data);
+
+    console.log("this is res",response);
+
 
     if (!response.ok) {
       return res.status(404).json({ message: "Parcel not found" });

@@ -24,7 +24,7 @@ const Home = () => {
     navigate("/select-entity")
 
   }
-  console.log(entity=="sender");
+
 
   if(entity=="sender"){
     return <SenderPage />

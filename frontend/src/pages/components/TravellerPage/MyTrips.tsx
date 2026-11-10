@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 
 import api from "@/services/Axios";
+import { useDispatch } from "react-redux";
+import { setMyTrips } from "@/redux/slices/tripSlice";
+
 
 interface Trip {
   _id: string;
@@ -74,6 +77,7 @@ const MyTrips = () => {
   const [message, setMessage] = useState("");
 
   // GET MY TRIPS
+  const dispatch = useDispatch();
   const getMyTrips = async () => {
     try {
       setLoading(true);
@@ -82,6 +86,8 @@ const MyTrips = () => {
       const res = await api.get("/trip/my-trips");
 
       setTrips(res.data.trips || []);
+
+      dispatch(setMyTrips(res.data.trips))
     } catch (error: any) {
       setMessage(
         error.response?.data?.message || "Failed to fetch your trips"
@@ -90,6 +96,8 @@ const MyTrips = () => {
       setLoading(false);
     }
   };
+
+
 
   // GET ALL TRIPS
   const getAllTrips = async () => {
@@ -100,6 +108,10 @@ const MyTrips = () => {
       const res = await api.get("/trip/all");
 
       setTrips(res.data.trips || []);
+
+
+      // dispatch(setMyTrips(res.data.trips || []))
+
     } catch (error: any) {
       setMessage(
         error.response?.data?.message || "Failed to fetch trips"
@@ -116,6 +128,8 @@ const MyTrips = () => {
       getAllTrips();
     }
   }, [activeTab]);
+
+  console.log(trips);
 
   // HANDLE FORM INPUTS
   const handleChange = (
@@ -154,7 +168,7 @@ const MyTrips = () => {
         await api.put(`/trip/triproute/${editingId}`, payload);
         setMessage("Trip updated successfully");
       } else {
-       const res =  await api.post("/trip/create", payload);
+        const res = await api.post("/trip/create", payload);
 
 
         setMessage("Trip created successfully");
@@ -242,7 +256,7 @@ const MyTrips = () => {
     if (!confirmDelete) return;
 
     try {
-     await api.get(`/trip/delete/${id}`);
+      await api.get(`/trip/delete/${id}`);
 
       setMessage("Trip deleted successfully");
       await getMyTrips();
@@ -347,22 +361,20 @@ const MyTrips = () => {
         <div className="flex gap-2 rounded-xl bg-[#111a2e] p-1">
           <button
             onClick={() => setActiveTab("mine")}
-            className={`rounded-lg px-5 py-2 text-sm font-medium ${
-              activeTab === "mine"
+            className={`rounded-lg px-5 py-2 text-sm font-medium ${activeTab === "mine"
                 ? "bg-[#bef264] text-[#0b1020]"
                 : "text-gray-400"
-            }`}
+              }`}
           >
             My Trips
           </button>
 
           <button
             onClick={() => setActiveTab("all")}
-            className={`rounded-lg px-5 py-2 text-sm font-medium ${
-              activeTab === "all"
+            className={`rounded-lg px-5 py-2 text-sm font-medium ${activeTab === "all"
                 ? "bg-[#bef264] text-[#0b1020]"
                 : "text-gray-400"
-            }`}
+              }`}
           >
             All Trips
           </button>
@@ -675,8 +687,8 @@ const MyTrips = () => {
                   {saving
                     ? "Saving..."
                     : editingId
-                    ? "Update Trip"
-                    : "Create Trip"}
+                      ? "Update Trip"
+                      : "Create Trip"}
                 </button>
               </div>
             </form>

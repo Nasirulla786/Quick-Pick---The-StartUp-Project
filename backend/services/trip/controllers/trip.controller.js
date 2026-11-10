@@ -1,4 +1,5 @@
 import redis from "../../../shared/redis.js";
+import Parcel from "../model/parcelModel.js";
 import Trip from "../model/trip.model.js";
 
 // Helper: Clear trip-related cache
@@ -124,7 +125,7 @@ export const getMyTrips = async (req, res) => {
   try {
     const trips = await Trip.find({
       traveller: req.userId,
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).populate({path:"parcels" , model:Parcel})
 
     return res.status(200).json({
       success: true,
@@ -393,5 +394,3 @@ export const getTravellerTrips = async (req, res) => {
     });
   }
 };
-
-

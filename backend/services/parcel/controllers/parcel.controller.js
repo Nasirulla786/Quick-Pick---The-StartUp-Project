@@ -190,14 +190,17 @@ export const deleteParcel = async (req, res) => {
 export const findParcel = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("this is id",id);
 
     const myParcel = await Parcel.findById(id);
 
     if (!myParcel) {
       return res.status(404).json({
-        message: "Parcel not found",
+        message: "Parcel not found from parcel service",
       });
     }
+
+    console.log("parcel from parcel service",myParcel);
 
     return res.status(200).json({
       success: true,

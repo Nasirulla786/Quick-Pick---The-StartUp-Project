@@ -1,11 +1,13 @@
 import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "../slices/userSlice.ts";
-import parcelReducer from "../slices/parcelSlice.ts"
+import parcelReducer from "../slices/parcelSlice.ts";
+import tripReducer from "../slices/tripSlice.ts";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    parcel:parcelReducer
+    parcel: parcelReducer,
+    trips: tripReducer,
   },
 });
 

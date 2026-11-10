@@ -28,10 +28,10 @@ interface state {
 const parcelSlice = createSlice({
   name: "parcel",
   initialState: {
-    parcelData: null as IParcel | null,
+    parcelData: [] as IParcel[],
   },
   reducers: {
-    setParcelData: (state: state, action: PayloadAction<IParcel>) => {
+    setParcelData: (state, action: PayloadAction<IParcel[]>) => {
       state.parcelData = action.payload;
     },
   },

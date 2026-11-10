@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import api from "@/services/Axios";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setParcelData } from "@/redux/slices/parcelSlice";
 
 type Trip = {
   _id: string;
@@ -120,6 +122,7 @@ export const SenderPage = () => {
     }
   };
 
+  const dispatch = useDispatch()
   // GET MY PARCELS
   const getMyParcels = async () => {
     try {
@@ -131,9 +134,13 @@ export const SenderPage = () => {
         ? res.data
         : res.data.data || res.data.parcels || [];
 
+
+
+
+      dispatch(setParcelData(parcelData))
       setParcels(parcelData);
 
-      
+
     } catch (error: any) {
       showMessage(
         error.response?.data?.message || "Unable to load parcels",
@@ -327,11 +334,10 @@ export const SenderPage = () => {
         {/* MESSAGE */}
         {message && (
           <div
-            className={`flex items-center justify-between rounded-xl border p-4 text-sm ${
-              messageType === "success"
-                ? "border-lime-400/20 bg-lime-400/10 text-lime-300"
-                : "border-red-400/20 bg-red-400/10 text-red-300"
-            }`}
+            className={`flex items-center justify-between rounded-xl border p-4 text-sm ${messageType === "success"
+              ? "border-lime-400/20 bg-lime-400/10 text-lime-300"
+              : "border-red-400/20 bg-red-400/10 text-red-300"
+              }`}
           >
             {message}
             <button onClick={() => setMessage("")}>
@@ -775,22 +781,20 @@ export const SenderPage = () => {
           <div className="flex w-fit gap-1 rounded-xl border border-white/[0.08] bg-[#111a2e] p-1">
             <button
               onClick={() => setTripView("all")}
-              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
-                tripView === "all"
-                  ? "bg-lime-400 text-[#0b1020]"
-                  : "text-slate-400 hover:text-white"
-              }`}
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${tripView === "all"
+                ? "bg-lime-400 text-[#0b1020]"
+                : "text-slate-400 hover:text-white"
+                }`}
             >
               All trips ({trips.length})
             </button>
 
             <button
               onClick={() => setTripView("available")}
-              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${
-                tripView === "available"
-                  ? "bg-lime-400 text-[#0b1020]"
-                  : "text-slate-400 hover:text-white"
-              }`}
+              className={`rounded-lg px-4 py-2.5 text-sm font-medium transition ${tripView === "available"
+                ? "bg-lime-400 text-[#0b1020]"
+                : "text-slate-400 hover:text-white"
+                }`}
             >
               Available ({availableTrips.length})
             </button>

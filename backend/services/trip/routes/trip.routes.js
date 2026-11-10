@@ -27,6 +27,6 @@ import { requestParcel } from "../controllers/request.controller.js";
 
 
     tripRouter.get("/traveller-trip/:id", isAuth, getTravellerTrips);
-    tripRouter.get("/request-parcel/:tripId", isAuth, requestParcel);
+    tripRouter.post("/request-parcel/:tripId", isAuth, requestParcel);
 
     export default tripRouter;

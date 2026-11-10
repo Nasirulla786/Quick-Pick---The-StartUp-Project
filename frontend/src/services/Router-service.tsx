@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux'
 import type { RootState } from '@/redux/stores/store'
 import TravellerPage from '@/pages/entity/TravellerPage'
 import TravelerId from '@/pages/entity/TravelerId'
+import SeeRequest from '@/pages/SeeRequest'
 
 
 const RouterService = () => {
@@ -25,6 +26,7 @@ const RouterService = () => {
                 <Route path="/otp" element={<OTP />} />
                 <Route path="/traveller-page" element={<TravellerPage />} />
                 <Route path="/traveller/:id" element={<TravelerId />} />
+                <Route path="/see-request" element={<SeeRequest />} />
             </Routes>
 
         </>

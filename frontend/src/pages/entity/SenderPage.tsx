@@ -23,6 +23,7 @@ import {
   CircleCheck,
   Wallet,
   Boxes,
+  Plane,
 } from "lucide-react";
 import api from "@/services/Axios";
 import { useNavigate } from "react-router-dom";
@@ -438,23 +439,14 @@ export const SenderPage = () => {
             </button>
 
             <button
-              onClick={() =>
-                document.getElementById("my-parcels")?.scrollIntoView({
-                  behavior: "smooth",
-                })
-              }
-              className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0d1527] p-4 text-left transition hover:border-lime-400/40 hover:bg-[#151f32]"
+
+              className="group flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#0d1527] p-4 text-left transition hover:border-lime-400/40 hover:bg-[#151f32] cursor-pointer"
+              onClick={()=>navigate("/see-request")}
             >
-              <div className="rounded-xl bg-lime-400/10 p-3 text-lime-400">
-                <Boxes size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Manage parcels</p>
-                <p className="mt-1 text-xs text-slate-500">
-                  View and update parcels
-                </p>
-              </div>
-              <ArrowRight className="ml-auto text-slate-500 transition group-hover:translate-x-1 group-hover:text-lime-400" size={17} />
+
+
+             <Plane /> See Request
+
             </button>
           </div>
         </section>

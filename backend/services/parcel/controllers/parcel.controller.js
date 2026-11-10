@@ -212,3 +212,68 @@ export const findParcel = async (req, res) => {
     });
   }
 };
+
+
+export const changeStatus = async (req, res) => {
+  try {
+    const { traveller, trip, requestStatus } = req.body;
+    const { id } = req.params;
+
+    const parcel = await Parcel.findById(id);
+
+    if (!parcel) {
+      return res.status(404).json({
+        success: false,
+        message: "Parcel not found",
+      });
+    }
+
+    if (!["accepted", "rejected"].includes(requestStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid request status",
+      });
+    }
+
+    parcel.requestStatus = requestStatus;
+
+    if (requestStatus === "accepted") {
+      parcel.traveller = traveller;
+      parcel.trip = trip;
+    }
+
+    if (requestStatus === "rejected") {
+      parcel.traveller = null;
+      parcel.trip = null;
+    }
+
+    await parcel.save();
+
+    if (requestStatus === "rejected") {
+      setTimeout(async () => {
+        try {
+          const currentParcel = await Parcel.findById(id);
+
+          // Reset only if it is still rejected
+          if (currentParcel?.requestStatus === "rejected") {
+            currentParcel.requestStatus = "pending";
+            await currentParcel.save();
+          }
+        } catch (error) {
+          console.error("Request reset error:", error);
+        }
+      }, 5 * 60 * 1000);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Request ${requestStatus} successfully`,
+      parcel,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

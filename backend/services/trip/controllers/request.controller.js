@@ -20,10 +20,6 @@ export const requestParcel = async (req, res) => {
 
     const data = await response.json();
 
-console.log("STATUS:", response.status);
-console.log("RESPONSE:", data);
-
-    console.log("this is res",response);
 
 
     if (!response.ok) {

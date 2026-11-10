@@ -7,6 +7,7 @@ import {
   updateParcel,
   deleteParcel,
   findParcel,
+  changeStatus,
 } from "../controllers/parcel.controller.js";
 
 const parcelRouter = express.Router();
@@ -16,6 +17,7 @@ parcelRouter.get("/my-parcels", isAuth, getMyParcels);
 parcelRouter.put("/:id", isAuth, updateParcel);
 parcelRouter.delete("/:id", isAuth, deleteParcel);
 parcelRouter.get("/parcel/:id" , isAuth,  findParcel)
+parcelRouter.post("/parcel-request-change/:id" , isAuth,  changeStatus)
 
 
 

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import parcelSchema from "../../../shared/parcelSchema";
+import parcelSchema from "../../../shared/parcelSchema.js";
 
 const Parcel = mongoose.model("Parcel", parcelSchema);
 

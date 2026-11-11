@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import api from "@/services/Axios";
+import { socket } from "@/socket/socket";
 
 interface Message {
   _id: string;
@@ -21,6 +22,11 @@ interface Message {
   text: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+interface IncomingMessage {
+  senderId: string;
+  text: string;
 }
 
 const SenderChatpage = () => {
@@ -41,7 +47,7 @@ const SenderChatpage = () => {
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Fetch all messages
+  // Fetch message history
   const getMessages = async () => {
     if (!receiverId || !senderId) return;
 
@@ -62,6 +68,33 @@ const SenderChatpage = () => {
     }
   };
 
+  // Realtime socket connection
+  useEffect(() => {
+    if (!senderId || !receiverId) return;
+
+    socket.connect();
+
+    const handleReceiveMessage = (newMessage: IncomingMessage) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          _id: `${Date.now()}-${Math.random()}`,
+          sender: newMessage.senderId,
+          receiver: senderId,
+          text: newMessage.text,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
+
+    return () => {
+      socket.off("receive-message", handleReceiveMessage);
+      socket.disconnect();
+    };
+  }, [senderId, receiverId]);
+
   // Send message
   const handleSendMessage = async (
     e: React.FormEvent<HTMLFormElement>
@@ -76,6 +109,7 @@ const SenderChatpage = () => {
       setSending(true);
       setError("");
 
+      // Save message in MongoDB through REST API
       const response = await api.post(
         `/chat/send-message/${receiverId}`,
         {
@@ -83,8 +117,13 @@ const SenderChatpage = () => {
         }
       );
 
-    
+      // Send realtime message to receiver
+      socket.emit("send-message", {
+        receiverId,
+        text: trimmedMessage,
+      });
 
+      // Update sender's chat
       setMessages((prev) => [...prev, response.data]);
       setMessage("");
     } catch (error) {
@@ -95,7 +134,7 @@ const SenderChatpage = () => {
     }
   };
 
-  // Fetch messages when page opens or receiver changes
+  // Fetch history when chat opens
   useEffect(() => {
     getMessages();
   }, [receiverId, senderId]);
@@ -117,12 +156,10 @@ const SenderChatpage = () => {
 
   return (
     <div className="min-h-screen bg-[#0b1020] p-3 text-white sm:p-6">
-
       <div className="mx-auto flex h-[calc(100vh-24px)] max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111a2e] shadow-2xl sm:h-[calc(100vh-48px)]">
 
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-white/10 bg-[#111a2e] px-4 py-4 sm:px-6">
-
           <button
             onClick={() => window.history.back()}
             className="rounded-lg p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
@@ -135,10 +172,7 @@ const SenderChatpage = () => {
           </div>
 
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold text-white">
-              Chat
-            </h2>
-
+            <h2 className="font-semibold text-white">Chat</h2>
             <p className="truncate text-xs text-slate-400">
               {receiverId}
             </p>
@@ -154,11 +188,7 @@ const SenderChatpage = () => {
 
         {/* Chat Information */}
         <div className="flex items-center gap-3 border-b border-white/10 bg-[#0d1527] px-5 py-3">
-          <MessageCircle
-            size={17}
-            className="text-[#bef264]"
-          />
-
+          <MessageCircle size={17} className="text-[#bef264]" />
           <p className="text-xs text-slate-400">
             Discuss pickup, delivery and parcel details here.
           </p>
@@ -166,20 +196,13 @@ const SenderChatpage = () => {
 
         {/* Messages */}
         <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
-
           {loading ? (
             <div className="flex h-full items-center justify-center gap-3 text-slate-400">
-              <Loader2
-                size={20}
-                className="animate-spin text-[#bef264]"
-              />
-              <span className="text-sm">
-                Loading messages...
-              </span>
+              <Loader2 size={20} className="animate-spin text-[#bef264]" />
+              <span className="text-sm">Loading messages...</span>
             </div>
           ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
-
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#bef264]/10 text-[#bef264]">
                 <MessageCircle size={30} />
               </div>
@@ -223,9 +246,7 @@ const SenderChatpage = () => {
                             : "text-slate-400"
                         }`}
                       >
-                        {new Date(
-                          msg.createdAt
-                        ).toLocaleTimeString([], {
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
@@ -243,9 +264,7 @@ const SenderChatpage = () => {
         {/* Error */}
         {error && (
           <div className="flex items-center justify-between gap-3 border-t border-red-500/20 bg-red-500/5 px-4 py-3">
-            <p className="text-xs text-red-400">
-              {error}
-            </p>
+            <p className="text-xs text-red-400">{error}</p>
 
             <button
               onClick={getMessages}
@@ -263,7 +282,6 @@ const SenderChatpage = () => {
           className="border-t border-white/10 bg-[#111a2e] p-3 sm:p-4"
         >
           <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0d1527] p-2 transition focus-within:border-[#bef264]/40">
-
             <input
               type="text"
               value={message}
@@ -294,7 +312,6 @@ const SenderChatpage = () => {
             Keep your communication clear and related to your parcel.
           </p>
         </form>
-
       </div>
     </div>
   );

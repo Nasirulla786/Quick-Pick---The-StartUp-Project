@@ -15,6 +15,7 @@ import {
 import type { RootState } from "@/redux/stores/store";
 import type { IParcelRequest } from "@/redux/slices/tripSlice";
 import api from "@/services/Axios";
+import { socket } from "@/socket/socket";
 
 interface IChatMessage {
   _id: string;
@@ -25,9 +26,16 @@ interface IChatMessage {
   updatedAt?: string;
 }
 
+interface IncomingMessage {
+  senderId: string;
+  text: string;
+}
+
 const Message = () => {
   const { userData } = useSelector((state: RootState) => state.auth);
   const { myTrips } = useSelector((state: RootState) => state.trips);
+
+  const senderId = userData?._id;
 
   const [selectedParcel, setSelectedParcel] =
     useState<IParcelRequest | null>(null);
@@ -40,7 +48,7 @@ const Message = () => {
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Get all accepted parcels from all trips
+  // Get accepted parcels
   const acceptedParcels: IParcelRequest[] = Array.from(
     new Map(
       myTrips
@@ -50,7 +58,7 @@ const Message = () => {
     ).values()
   );
 
-  // Logged-in traveller sends message to sender
+  // Selected parcel sender
   const receiver = selectedParcel?.sender;
 
   // Fetch messages
@@ -65,10 +73,7 @@ const Message = () => {
         `/chat/get-messages/${receiver}`
       );
 
-      // Backend should return an array of populated messages
-      const data = response.data;
-
-      setMessages(Array.isArray(data) ? data : []);
+      setMessages(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.log("Get messages error:", error);
       setError("Messages load nahi ho paaye.");
@@ -78,7 +83,37 @@ const Message = () => {
     }
   };
 
-  // Fetch messages when selected parcel changes
+  // Realtime socket connection and listener
+  useEffect(() => {
+    if (!senderId) return;
+
+    socket.connect();
+
+    const handleReceiveMessage = (newMessage: IncomingMessage) => {
+      // Only show messages from the currently selected conversation
+      if (String(newMessage.senderId) !== String(receiver)) return;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          _id: `${Date.now()}-${Math.random()}`,
+          sender: newMessage.senderId,
+          receiver: senderId,
+          text: newMessage.text,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    };
+
+    socket.on("receive-message", handleReceiveMessage);
+
+    return () => {
+      socket.off("receive-message", handleReceiveMessage);
+      socket.disconnect();
+    };
+  }, [senderId, receiver]);
+
+  // Fetch messages when parcel changes
   useEffect(() => {
     if (selectedParcel) {
       getMessages();
@@ -105,6 +140,7 @@ const Message = () => {
       setSending(true);
       setError("");
 
+      // Save message in database
       const response = await api.post(
         `/chat/send-message/${receiver}`,
         {
@@ -112,7 +148,13 @@ const Message = () => {
         }
       );
 
-      // Backend response uses "text"
+      // Send realtime message to receiver
+      socket.emit("send-message", {
+        receiverId: receiver,
+        text: trimmedMessage,
+      });
+
+      // Update sender's UI
       setMessages((prev) => [...prev, response.data]);
       setMessage("");
     } catch (error) {
@@ -188,6 +230,7 @@ const Message = () => {
                       setSelectedParcel(parcel);
                       setMessage("");
                       setMessages([]);
+                      setError("");
                     }}
                     className={`w-full rounded-xl border p-4 text-left transition ${
                       selectedParcel?._id === parcel._id
@@ -327,7 +370,7 @@ const Message = () => {
                   ) : (
                     messages.map((msg) => {
                       const isMe =
-                        String(msg.sender) === String(userData?._id);
+                        String(msg.sender) === String(senderId);
 
                       return (
                         <div
@@ -366,7 +409,7 @@ const Message = () => {
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Error while sending */}
+                {/* Error */}
                 {error && messages.length > 0 && (
                   <p className="px-4 pb-2 text-center text-xs text-red-400">
                     {error}
@@ -387,6 +430,7 @@ const Message = () => {
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Type your message..."
+                      disabled={sending}
                       className="min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-slate-500"
                     />
 

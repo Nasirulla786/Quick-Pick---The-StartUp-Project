@@ -12,10 +12,13 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "cookie": "^2.0.2",
     "cookie-parser": "^1.4.7",
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.12.1",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "socket.io": "^4.8.4"
   }
 }

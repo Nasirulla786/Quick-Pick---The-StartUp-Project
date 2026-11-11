@@ -1,3 +1,4 @@
+
 import Conversation from "../model/conversation.model.js";
 import Message from "../model/message.model.js";
 
@@ -11,29 +12,29 @@ export const sendMessage = async (req, res) => {
     const newMessage = await Message.create({
       sender,
       receiver,
-      message,
+      text: message,
     });
 
-    // Check existing conversation
+    // Find conversation in both directions
     let CheckConversation = await Conversation.findOne({
-      senderId: sender,
-      receiverId: receiver,
+      $or: [
+        { senderId: sender, receiverId: receiver },
+        { senderId: receiver, receiverId: sender },
+      ],
     });
 
-    // Create new conversation
+    // Create conversation if it does not exist
     if (!CheckConversation) {
       CheckConversation = await Conversation.create({
         senderId: sender,
         receiverId: receiver,
         messages: [newMessage._id],
       });
-
-      return res.status(201).json(newMessage);
+    } else {
+      // Add message to existing conversation
+      CheckConversation.messages.push(newMessage._id);
+      await CheckConversation.save();
     }
-
-    // Push message into existing conversation
-    CheckConversation.messages.push(newMessage._id);
-    await CheckConversation.save();
 
     return res.status(201).json(newMessage);
   } catch (error) {
@@ -51,9 +52,12 @@ export const GetMessages = async (req, res) => {
     const sender = req.userId;
     const receiver = req.params.id;
 
+    // Find conversation in both directions
     const CheckConversation = await Conversation.findOne({
-      senderId: sender,
-      receiverId: receiver,
+      $or: [
+        { senderId: sender, receiverId: receiver },
+        { senderId: receiver, receiverId: sender },
+      ],
     }).populate("messages");
 
     if (!CheckConversation) {

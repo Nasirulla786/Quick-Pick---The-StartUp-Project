@@ -2,13 +2,16 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDb from "./db/db.js";
 import chatRouter from "./routes/chat.route.js";
+import cookieParser from "cookie-parser";
 dotenv.config();
 
 const app = express();
 
 app.use(express.json());
 
-app.use("/",chatRouter)
+app.use(cookieParser());
+
+app.use("/", chatRouter);
 
 const PORT = process.env.PORT || 5004;
 

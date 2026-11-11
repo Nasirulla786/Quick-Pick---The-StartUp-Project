@@ -107,3 +107,39 @@ export const getTravellerById = async (req, res) => {
         });
     }
 };
+
+export const getUserProfileById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!/^[a-f\d]{24}$/i.test(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    const user = await User.findById(id).select("name");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+      },
+    });
+  } catch (error) {
+    console.error("Get user profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user profile",
+    });
+  }
+};

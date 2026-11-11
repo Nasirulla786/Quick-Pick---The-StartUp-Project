@@ -1,8 +1,10 @@
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import {
   MessageCircle,
+  Check,
+  CheckCheck,
   Package,
   MapPin,
   Send,
@@ -22,13 +24,22 @@ interface IChatMessage {
   sender: string;
   receiver: string;
   text: string;
+  status?: "sent" | "delivered" | "seen";
   createdAt?: string;
   updatedAt?: string;
 }
 
 interface IncomingMessage {
+  _id?: string;
   senderId: string;
   text: string;
+  status?: "sent" | "delivered" | "seen";
+  createdAt?: string;
+}
+
+interface MessageStatusUpdate {
+  messageId: string;
+  status: "sent" | "delivered" | "seen";
 }
 
 const Message = () => {
@@ -45,8 +56,16 @@ const Message = () => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [senderProfile, setSenderProfile] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isPeerTyping, setIsPeerTyping] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
+  const peerTypingTimeoutRef = useRef<number | null>(null);
+  const typingActiveRef = useRef(false);
 
   // Get accepted parcels
   const acceptedParcels: IParcelRequest[] = Array.from(
@@ -60,9 +79,41 @@ const Message = () => {
 
   // Selected parcel sender
   const receiver = selectedParcel?.sender;
+  const senderName =
+    senderProfile && senderProfile.id === receiver ? senderProfile.name : "";
+
+  const stopTyping = useCallback(() => {
+    if (typingTimeoutRef.current !== null) {
+      window.clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    if (typingActiveRef.current && receiver) {
+      socket.emit("stop-typing", { receiverId: receiver });
+      typingActiveRef.current = false;
+    }
+  }, [receiver]);
+
+  const handleMessageChange = (value: string) => {
+    setMessage(value);
+    if (!receiver) return;
+
+    if (!value.trim()) {
+      stopTyping();
+      return;
+    }
+
+    if (!typingActiveRef.current) {
+      socket.emit("typing", { receiverId: receiver });
+      typingActiveRef.current = true;
+    }
+    if (typingTimeoutRef.current !== null) {
+      window.clearTimeout(typingTimeoutRef.current);
+    }
+    typingTimeoutRef.current = window.setTimeout(stopTyping, 1500);
+  };
 
   // Fetch messages
-  const getMessages = async () => {
+  const getMessages = useCallback(async () => {
     if (!receiver) return;
 
     try {
@@ -72,8 +123,24 @@ const Message = () => {
       const response = await api.get(
         `/chat/get-messages/${receiver}`
       );
+      const history = Array.isArray(response.data) ? response.data : [];
 
-      setMessages(Array.isArray(response.data) ? response.data : []);
+      setMessages((current) => {
+        const relevantMessages = current.filter(
+          (msg) =>
+            (String(msg.sender) === String(senderId) &&
+              String(msg.receiver) === String(receiver)) ||
+            (String(msg.sender) === String(receiver) &&
+              String(msg.receiver) === String(senderId)),
+        );
+        const byId = new Map(
+          relevantMessages.map((msg) => [msg._id, msg]),
+        );
+        for (const msg of history) {
+          byId.set(msg._id, { ...byId.get(msg._id), ...msg });
+        }
+        return Array.from(byId.values());
+      });
     } catch (error) {
       console.log("Get messages error:", error);
       setError("Messages load nahi ho paaye.");
@@ -81,37 +148,114 @@ const Message = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [receiver, senderId]);
 
   // Realtime socket connection and listener
   useEffect(() => {
     if (!senderId) return;
 
-    socket.connect();
-
     const handleReceiveMessage = (newMessage: IncomingMessage) => {
       // Only show messages from the currently selected conversation
       if (String(newMessage.senderId) !== String(receiver)) return;
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          _id: `${Date.now()}-${Math.random()}`,
+      setMessages((prev) => {
+        const messageId = newMessage._id || `${Date.now()}-${Math.random()}`;
+        const incoming = {
+          _id: messageId,
           sender: newMessage.senderId,
           receiver: senderId,
           text: newMessage.text,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
+          status: newMessage.status,
+          createdAt: newMessage.createdAt || new Date().toISOString(),
+        };
+        const existingIndex = prev.findIndex((msg) => msg._id === messageId);
+        if (existingIndex < 0) return [...prev, incoming];
+        return prev.map((msg, index) =>
+          index === existingIndex ? { ...msg, ...incoming } : msg,
+        );
+      });
+      setIsPeerTyping(false);
+      socket.emit("mark-seen", { receiverId: newMessage.senderId });
+    };
+
+    const handleMessageStatus = (update: MessageStatusUpdate) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === update.messageId
+            ? { ...msg, status: update.status }
+            : msg,
+        ),
+      );
+    };
+
+    const handleTyping = ({ senderId: typingSenderId }: { senderId: string }) => {
+      if (String(typingSenderId) !== String(receiver)) return;
+      setIsPeerTyping(true);
+      if (peerTypingTimeoutRef.current !== null) {
+        window.clearTimeout(peerTypingTimeoutRef.current);
+      }
+      peerTypingTimeoutRef.current = window.setTimeout(
+        () => setIsPeerTyping(false),
+        2000,
+      );
+    };
+
+    const handleStopTyping = ({ senderId: typingSenderId }: { senderId: string }) => {
+      if (String(typingSenderId) !== String(receiver)) return;
+      setIsPeerTyping(false);
+      if (peerTypingTimeoutRef.current !== null) {
+        window.clearTimeout(peerTypingTimeoutRef.current);
+        peerTypingTimeoutRef.current = null;
+      }
+    };
+
+    const markConversationSeen = () => {
+      if (receiver) socket.emit("mark-seen", { receiverId: receiver });
     };
 
     socket.on("receive-message", handleReceiveMessage);
+    socket.on("message-status", handleMessageStatus);
+    socket.on("typing", handleTyping);
+    socket.on("stop-typing", handleStopTyping);
+    socket.on("connect", markConversationSeen);
+    socket.connect();
+    if (socket.connected) markConversationSeen();
 
     return () => {
+      stopTyping();
+      if (peerTypingTimeoutRef.current !== null) {
+        window.clearTimeout(peerTypingTimeoutRef.current);
+      }
       socket.off("receive-message", handleReceiveMessage);
+      socket.off("message-status", handleMessageStatus);
+      socket.off("typing", handleTyping);
+      socket.off("stop-typing", handleStopTyping);
+      socket.off("connect", markConversationSeen);
       socket.disconnect();
     };
-  }, [senderId, receiver]);
+  }, [senderId, receiver, stopTyping]);
+
+  useEffect(() => {
+    if (!receiver) {
+      return;
+    }
+
+    let active = true;
+
+    api.get(`/auth/user/profile/${receiver}`)
+      .then((response) => {
+        if (active) {
+          setSenderProfile({ id: receiver, name: response.data.user.name });
+        }
+      })
+      .catch((error) => {
+        console.error("Get chat participant error:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [receiver]);
 
   // Fetch messages when parcel changes
   useEffect(() => {
@@ -121,7 +265,7 @@ const Message = () => {
       setMessages([]);
       setError("");
     }
-  }, [selectedParcel?._id]);
+  }, [selectedParcel, getMessages]);
 
   // Scroll to latest message
   useEffect(() => {
@@ -152,10 +296,12 @@ const Message = () => {
       socket.emit("send-message", {
         receiverId: receiver,
         text: trimmedMessage,
+        messageId: response.data._id,
       });
 
       // Update sender's UI
       setMessages((prev) => [...prev, response.data]);
+      stopTyping();
       setMessage("");
     } catch (error) {
       console.log("Send message error:", error);
@@ -166,11 +312,11 @@ const Message = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1020] p-4 text-white sm:p-6">
-      <div className="mx-auto max-w-7xl">
+    <div className="h-[calc(100dvh-140px)] min-h-0 overflow-hidden bg-[#0b1020] p-4 text-white sm:h-[calc(100dvh-164px)] sm:p-6">
+      <div className="mx-auto flex h-full max-w-7xl flex-col">
 
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 shrink-0">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[#bef264]">
             <MessageCircle size={18} />
             Quick & Pick Messages
@@ -186,7 +332,7 @@ const Message = () => {
         </div>
 
         {/* Chat Layout */}
-        <div className="grid h-[calc(100vh-190px)] min-h-[550px] overflow-hidden rounded-2xl border border-white/10 bg-[#111a2e] md:grid-cols-[320px_1fr]">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#111a2e] md:grid-cols-[320px_1fr]">
 
           {/* Left Sidebar */}
           <div
@@ -268,12 +414,12 @@ const Message = () => {
           <div
             className={`${
               selectedParcel ? "flex" : "hidden md:flex"
-            } min-w-0 flex-col`}
+            } min-h-0 min-w-0 flex-col`}
           >
             {selectedParcel ? (
               <>
                 {/* Chat Header */}
-                <div className="flex items-center gap-3 border-b border-white/10 p-4 sm:p-5">
+                <div className="flex shrink-0 items-center gap-3 border-b border-white/10 p-4 sm:p-5">
                   <button
                     onClick={() => setSelectedParcel(null)}
                     className="rounded-lg p-2 text-slate-400 hover:bg-white/5 md:hidden"
@@ -287,11 +433,11 @@ const Message = () => {
 
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-semibold">
-                      {selectedParcel.title}
+                      {senderName || "Sender"}
                     </h2>
 
-                    <p className="mt-1 text-xs text-[#bef264]">
-                      Accepted Parcel
+                    <p className="mt-1 truncate text-xs text-[#bef264]">
+                      {selectedParcel.title} · Accepted Parcel
                     </p>
                   </div>
 
@@ -301,7 +447,7 @@ const Message = () => {
                 </div>
 
                 {/* Parcel Information */}
-                <div className="border-b border-white/10 bg-[#0d1527] p-4">
+                <div className="shrink-0 border-b border-white/10 bg-[#0d1527] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <p className="text-xs text-slate-500">
@@ -329,7 +475,7 @@ const Message = () => {
                 </div>
 
                 {/* Messages Area */}
-                <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
                   {loading ? (
                     <div className="m-auto flex items-center gap-2 text-sm text-slate-400">
                       <Loader2
@@ -391,14 +537,36 @@ const Message = () => {
                             </p>
 
                             {msg.createdAt && (
-                              <p className="mt-1 text-right text-[10px] opacity-60">
-                                {new Date(
-                                  msg.createdAt
-                                ).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
+                              <div className="mt-1 flex items-center justify-end gap-1">
+                                <p className="text-right text-[10px] opacity-60">
+                                  {new Date(
+                                    msg.createdAt
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                                {isMe &&
+                                  (msg.status === "seen" ? (
+                                    <CheckCheck
+                                      size={14}
+                                      aria-label="Seen"
+                                      className="text-sky-500"
+                                    />
+                                  ) : msg.status === "delivered" ? (
+                                    <CheckCheck
+                                      size={14}
+                                      aria-label="Delivered"
+                                      className="text-slate-500"
+                                    />
+                                  ) : (
+                                    <Check
+                                      size={14}
+                                      aria-label="Sent"
+                                      className="text-slate-500"
+                                    />
+                                  ))}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -406,18 +574,26 @@ const Message = () => {
                     })
                   )}
 
+                  {isPeerTyping && (
+                    <div className="flex justify-start">
+                      <div className="rounded-2xl rounded-bl-sm bg-[#1e293b] px-4 py-2 text-xs text-slate-400">
+                        Typing...
+                      </div>
+                    </div>
+                  )}
+
                   <div ref={bottomRef} />
                 </div>
 
                 {/* Error */}
                 {error && messages.length > 0 && (
-                  <p className="px-4 pb-2 text-center text-xs text-red-400">
+                  <p className="shrink-0 px-4 pb-2 text-center text-xs text-red-400">
                     {error}
                   </p>
                 )}
 
                 {/* Message Input */}
-                <div className="border-t border-white/10 p-4">
+                <div className="shrink-0 border-t border-white/10 p-4">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -428,7 +604,7 @@ const Message = () => {
                     <input
                       type="text"
                       value={message}
-                      onChange={(e) => setMessage(e.target.value)}
+                      onChange={(e) => handleMessageChange(e.target.value)}
                       placeholder="Type your message..."
                       disabled={sending}
                       className="min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-slate-500"

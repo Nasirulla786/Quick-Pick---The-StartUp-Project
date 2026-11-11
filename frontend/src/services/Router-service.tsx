@@ -11,6 +11,8 @@ import type { RootState } from '@/redux/stores/store'
 import TravellerPage from '@/pages/entity/TravellerPage'
 import TravelerId from '@/pages/entity/TravelerId'
 import SeeRequest from '@/pages/SeeRequest'
+import SenderChatpage from '@/pages/entity/SenderChatpage'
+import TravellerChatPage from '@/pages/entity/TravellerChatPage'
 
 
 const RouterService = () => {
@@ -27,6 +29,8 @@ const RouterService = () => {
                 <Route path="/traveller-page" element={<TravellerPage />} />
                 <Route path="/traveller/:id" element={<TravelerId />} />
                 <Route path="/see-request" element={<SeeRequest />} />
+                <Route path="/sender-chat/:id" element={<SenderChatpage />} />
+                <Route path="/traveller-chat/:id" element={<TravellerChatPage/>} />
             </Routes>
 
         </>

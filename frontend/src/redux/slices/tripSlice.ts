@@ -20,15 +20,29 @@ export interface ITrip {
 
 export interface IParcelRequest {
   _id: string;
+
+  // Users
   sender: string;
+  traveller: string | null;
+
+  // Parcel details
   title: string;
   from: string;
   to: string;
   date: string;
   weight: number;
   budget: number;
-  status: string;
+
+  // Relationships
+  trip: string | null;
+
+  // Status
+  status: "pending" | "in_transit" | "delivered" | "cancelled";
   requestStatus: "not_requested" | "pending" | "accepted" | "rejected";
+
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
 }
 interface MyTripsState {
   myTrips: ITrip[];

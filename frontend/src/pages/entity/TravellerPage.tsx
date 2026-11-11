@@ -10,6 +10,8 @@ import {
   LogOut,
   Menu,
   Bell,
+  MessageCircle,
+  MessageCircleCheckIcon,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -19,7 +21,8 @@ import MyTrips from "../components/TravellerPage/MyTrips";
 import ParcelRequest from "../components/TravellerPage/ParcelRequest";
 import ActiveDeliveries from "../components/TravellerPage/ActiveDeliveries";
 import Earnings from "../components/TravellerPage/Earnings";
-import Verification from "../components/TravellerPage/Verification";
+import Message from "../components/TravellerPage/message";
+
 
 const menuItems = [
   { name: "Overview", icon: LayoutDashboard },
@@ -28,7 +31,7 @@ const menuItems = [
   { name: "Parcel Requests", icon: Package },
   { name: "Active Deliveries", icon: Truck },
   { name: "Earnings", icon: Wallet },
-  { name: "Verification", icon: ShieldCheck },
+  { name: "Message", icon: MessageCircleCheckIcon },
   { name: "Settings", icon: Settings },
 ];
 
@@ -125,8 +128,8 @@ const TravellerPage = () => {
         {activeTab === "Earnings" && (
             <Earnings/>
         )}
-        {activeTab === "Verification" && (
-            <Verification/>
+        {activeTab === "Message" && (
+            <Message/>
         )}
         {activeTab === "Settings" && (
             <Settings/>

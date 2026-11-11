@@ -15,7 +15,7 @@ const isAuth = async (req, res, next) => {
 
     const decodeToken = jwt.verify(token, process.env.JSON_SECRET);
 
-    console.log("env", process.env.JSON_SECRET);
+   
     req.userId = decodeToken.id;
 
     next();

@@ -4,7 +4,6 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export interface ITrip {
   _id: string;
-  traveller: string;
   from: string;
   to: string;
   departureDate: string;
@@ -12,11 +11,10 @@ export interface ITrip {
   transportMode: string;
   availableCapacity: number;
   pricePerKg: number;
-  description?: string;
-  status: string;
-  parcels: IParcelRequest[];
+  totalEarnings?: number;
+  parcels: any[];
+  createdAt:Date
 }
-
 
 export interface IParcelRequest {
   _id: string;

@@ -43,11 +43,7 @@ const parcelSchema = new mongoose.Schema(
       min: 0,
     },
 
-    status: {
-      type: String,
-      enum: ["pending", "in_transit", "delivered", "cancelled"],
-      default: "pending",
-    },
+   
 
     // Traveller receiving this request
     traveller: {

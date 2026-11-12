@@ -6,7 +6,7 @@
 
     import { createTrip, deleteTrip, getAllTrips, getMyTrips, getTravellerById, getTravellerTrips, getTripById, searchTrips, updateTrip } from "../controllers/trip.controller.js";
     import isAuth from "../../auth/middleware/isAuth.js";
-import { requestParcel } from "../controllers/request.controller.js";
+import { requestParcel, updatePrice } from "../controllers/request.controller.js";
 
     const tripRouter = express.Router();
 
@@ -28,5 +28,6 @@ import { requestParcel } from "../controllers/request.controller.js";
 
     tripRouter.get("/traveller-trip/:id", isAuth, getTravellerTrips);
     tripRouter.post("/request-parcel/:tripId", isAuth, requestParcel);
+    tripRouter.post("/update-price/:id", isAuth, updatePrice);
 
     export default tripRouter;

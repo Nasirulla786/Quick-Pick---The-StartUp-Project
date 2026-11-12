@@ -9,7 +9,7 @@ import {
   findParcel,
   changeStatus,
 } from "../controllers/parcel.controller.js";
-import { findRequestParcel } from "../controllers/findparcel.controller.js";
+import { changeDeliveredStatus, findRequestParcel } from "../controllers/findparcel.controller.js";
 
 const parcelRouter = express.Router();
 
@@ -20,6 +20,7 @@ parcelRouter.delete("/:id", isAuth, deleteParcel);
 parcelRouter.get("/parcel/:id" , isAuth,  findParcel)
 parcelRouter.post("/parcel-request-change/:id" , isAuth,  changeStatus)
 parcelRouter.get("/find-traveller" , isAuth,  findRequestParcel)
+parcelRouter.post('/change-delivery-status/:id', changeDeliveredStatus)
 
 
 

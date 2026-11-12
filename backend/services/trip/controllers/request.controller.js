@@ -47,3 +47,37 @@ export const requestParcel = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+
+
+export const updatePrice = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { price } = req.body
+
+    const updatedTrip = await Trip.findByIdAndUpdate(
+      id,
+      { $inc: { totalEarnings: price } },
+    
+    )
+
+    if (!updatedTrip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found',
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Earnings updated successfully',
+      trip: updatedTrip,
+    })
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}

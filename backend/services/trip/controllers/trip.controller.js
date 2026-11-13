@@ -177,19 +177,23 @@ export const searchTrips = async (req, res) => {
 
     const filter = {
       status: "available",
+      availableCapacity: { $gt: 0 },
       departureDate: { $gte: new Date() },
     };
 
-    if (from) {
+    const escapeRegex = (value) =>
+      String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    if (typeof from === "string" && from.trim()) {
       filter.from = {
-        $regex: from,
+        $regex: escapeRegex(from.trim()),
         $options: "i",
       };
     }
 
-    if (to) {
+    if (typeof to === "string" && to.trim()) {
       filter.to = {
-        $regex: to,
+        $regex: escapeRegex(to.trim()),
         $options: "i",
       };
     }
@@ -249,9 +253,9 @@ export const searchTrips = async (req, res) => {
 // 6. UPDATE TRIP
 export const updateTrip = async (req, res) => {
   try {
-    const { tripId } = req.params;
+    const { id } = req.params;
 
-    const trip = await Trip.findById(tripId);
+    const trip = await Trip.findById(id);
 
     if (!trip) {
       return res.status(404).json({

@@ -50,6 +50,7 @@ const Message = () => {
 
   const [selectedParcel, setSelectedParcel] =
     useState<IParcelRequest | null>(null);
+  const receiver = selectedParcel?.sender;
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<IChatMessage[]>([]);
@@ -67,6 +68,10 @@ const Message = () => {
   const peerTypingTimeoutRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
 
+  useEffect(() => {
+    activeConversationRef.current = `${senderId || ""}:${receiver || ""}`;
+  }, [senderId, receiver]);
+
   // Get accepted parcels
   const acceptedParcels: IParcelRequest[] = Array.from(
     new Map(
@@ -78,9 +83,16 @@ const Message = () => {
   );
 
   // Selected parcel sender
-  const receiver = selectedParcel?.sender;
+  const activeConversationRef = useRef("");
   const senderName =
     senderProfile && senderProfile.id === receiver ? senderProfile.name : "";
+  const visibleMessages = messages.filter(
+    (msg) =>
+      (String(msg.sender) === String(senderId) &&
+        String(msg.receiver) === String(receiver)) ||
+      (String(msg.sender) === String(receiver) &&
+        String(msg.receiver) === String(senderId)),
+  );
 
   const stopTyping = useCallback(() => {
     if (typingTimeoutRef.current !== null) {
@@ -114,7 +126,9 @@ const Message = () => {
 
   // Fetch messages
   const getMessages = useCallback(async () => {
-    if (!receiver) return;
+    if (!receiver || !senderId) return;
+
+    const requestKey = `${senderId}:${receiver}`;
 
     try {
       setLoading(true);
@@ -123,7 +137,16 @@ const Message = () => {
       const response = await api.get(
         `/chat/get-messages/${receiver}`
       );
-      const history = Array.isArray(response.data) ? response.data : [];
+      if (activeConversationRef.current !== requestKey) return;
+      const history = Array.isArray(response.data)
+        ? response.data.filter(
+            (msg: IChatMessage) =>
+              (String(msg.sender) === String(senderId) &&
+                String(msg.receiver) === String(receiver)) ||
+              (String(msg.sender) === String(receiver) &&
+                String(msg.receiver) === String(senderId)),
+          )
+        : [];
 
       setMessages((current) => {
         const relevantMessages = current.filter(
@@ -142,11 +165,12 @@ const Message = () => {
         return Array.from(byId.values());
       });
     } catch (error) {
+      if (activeConversationRef.current !== requestKey) return;
       console.log("Get messages error:", error);
       setError("Messages load nahi ho paaye.");
       setMessages([]);
     } finally {
-      setLoading(false);
+      if (activeConversationRef.current === requestKey) setLoading(false);
     }
   }, [receiver, senderId]);
 
@@ -484,7 +508,7 @@ const Message = () => {
                       />
                       Loading messages...
                     </div>
-                  ) : error && messages.length === 0 ? (
+                  ) : error && visibleMessages.length === 0 ? (
                     <div className="m-auto text-center">
                       <p className="text-sm text-red-400">
                         {error}
@@ -498,7 +522,7 @@ const Message = () => {
                         Try again
                       </button>
                     </div>
-                  ) : messages.length === 0 ? (
+                  ) : visibleMessages.length === 0 ? (
                     <div className="m-auto text-center">
                       <MessageCircle
                         size={30}
@@ -514,7 +538,7 @@ const Message = () => {
                       </p>
                     </div>
                   ) : (
-                    messages.map((msg) => {
+                    visibleMessages.map((msg) => {
                       const isMe =
                         String(msg.sender) === String(senderId);
 
@@ -586,7 +610,7 @@ const Message = () => {
                 </div>
 
                 {/* Error */}
-                {error && messages.length > 0 && (
+                {error && visibleMessages.length > 0 && (
                   <p className="shrink-0 px-4 pb-2 text-center text-xs text-red-400">
                     {error}
                   </p>

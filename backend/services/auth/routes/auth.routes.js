@@ -6,6 +6,7 @@ const authRouter = e.Router();
 authRouter.post("/register-user" , RegisterUser)
 authRouter.post("/login-user" , LoginUser)
 authRouter.get("/logout-user" , LogoutUser)
+authRouter.post("/logout-user", LogoutUser)
 authRouter.post("/google", GoogleIdRegister)
 authRouter.post("/google-login", GoogleLogin)
 authRouter.post("/update-entity/:id", updateEntity)

@@ -5,11 +5,18 @@ import RouterService from "./services/Router-service";
 import { Toaster } from "sonner";
 
 function App() {
-  useCurrentUser()
+  const isCheckingSession = useCurrentUser();
+
   return (
     <>
       <Toaster position="top-right" richColors />
-      <RouterService />
+      {isCheckingSession ? (
+        <div className="flex min-h-screen items-center justify-center bg-[#0b1020] text-sm text-slate-400">
+          Checking your session...
+        </div>
+      ) : (
+        <RouterService />
+      )}
     </>
   );
 }

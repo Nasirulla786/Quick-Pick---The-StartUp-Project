@@ -81,7 +81,7 @@ export const LoginUser = async (req, res) => {
     }
 
     // 2. Find user
-    const user = await User.findOne({ email }).select("password");
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
       return res.status(404).json({
@@ -126,6 +126,7 @@ export const LoginUser = async (req, res) => {
         email: user.email,
         entity: user.entity,
         photoURL: user.photoURL,
+        emailVerified: user.emailVerified,
       },
     });
   } catch (error) {
@@ -139,8 +140,23 @@ export const LoginUser = async (req, res) => {
 };
 export const LogoutUser = async (req, res) => {
   try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
   } catch (error) {
     console.error("Logout user error", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to log out",
+    });
   }
 };
 export const GoogleIdRegister = async (req, res) => {
@@ -227,6 +243,7 @@ export const GoogleLogin = async (req, res) => {
         email: user.email,
         entity: user.entity,
         photoURL: user.photoURL,
+        emailVerified: user.emailVerified,
       },
     });
   } catch (error) {

@@ -1,5 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus,
   Eye,
@@ -13,22 +14,21 @@ import {
   Clock3,
   Weight,
   IndianRupee,
-  Sparkles,
   ArrowRight,
   Truck,
   UserRound,
   Send,
-  LayoutDashboard,
   Search,
   CircleCheck,
   Wallet,
-  Boxes,
   Plane,
+  History as HistoryIcon,
 } from "lucide-react";
 import api from "@/services/Axios";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setParcelData } from "@/redux/slices/parcelSlice";
+import LogoutButton from "@/components/LogoutButton";
 
 type Trip = {
   _id: string;
@@ -41,6 +41,7 @@ type Trip = {
   pricePerKg: number;
   description?: string;
   traveller: string;
+  status?: string;
 };
 
 export type Parcel = {
@@ -69,6 +70,23 @@ const inputClass =
 const cardClass =
   "rounded-2xl border border-white/[0.08] bg-[#111a2e] shadow-xl shadow-black/10";
 
+const normalizeLocation = (value: string) => value.trim().toLowerCase();
+
+const routeMatchScore = (route: string, search: string) => {
+  const normalizedRoute = normalizeLocation(route);
+  const normalizedSearch = normalizeLocation(search);
+
+  if (!normalizedSearch) return 0;
+  if (normalizedRoute === normalizedSearch) return 4;
+  if (
+    normalizedRoute.includes(normalizedSearch) ||
+    normalizedSearch.includes(normalizedRoute)
+  ) {
+    return 2;
+  }
+  return 0;
+};
+
 export const SenderPage = () => {
   const navigate = useNavigate();
 
@@ -80,6 +98,12 @@ export const SenderPage = () => {
 
   const [showParcelForm, setShowParcelForm] = useState(false);
   const [tripView, setTripView] = useState<"all" | "available">("all");
+  const [tripSearch, setTripSearch] = useState({
+    from: "",
+    to: "",
+    departureDate: "",
+  });
+  const [searchingTrips, setSearchingTrips] = useState(false);
 
   const [loadingTrips, setLoadingTrips] = useState(false);
   const [loadingParcels, setLoadingParcels] = useState(false);
@@ -163,12 +187,79 @@ export const SenderPage = () => {
       const isFutureTrip =
         new Date(trip.departureDate).setHours(23, 59, 59, 999) >= Date.now();
 
-      return trip.availableCapacity > 0 && isFutureTrip;
+      return (
+        trip.availableCapacity > 0 &&
+        isFutureTrip &&
+        (!trip.status || trip.status === "available")
+      );
     });
   }, [trips]);
 
   const displayedTrips =
     tripView === "available" ? availableTrips : trips;
+
+  const nearestRouteFrom = tripSearch.from || parcels[0]?.from || "";
+  const nearestRouteTo = tripSearch.to || parcels[0]?.to || "";
+  const nearestTrips = useMemo(() => {
+    if (!nearestRouteFrom.trim() && !nearestRouteTo.trim()) {
+      return [...availableTrips]
+        .sort(
+          (first, second) =>
+            new Date(first.departureDate).getTime() -
+            new Date(second.departureDate).getTime(),
+        )
+        .slice(0, 3);
+    }
+
+    return availableTrips
+      .map((trip) => ({
+        trip,
+        score:
+          routeMatchScore(trip.from, nearestRouteFrom) +
+          routeMatchScore(trip.to, nearestRouteTo),
+      }))
+      .filter(({ score }) => score > 0)
+      .sort((first, second) => {
+        if (second.score !== first.score) return second.score - first.score;
+        return (
+          new Date(first.trip.departureDate).getTime() -
+          new Date(second.trip.departureDate).getTime()
+        );
+      })
+      .slice(0, 3)
+      .map(({ trip }) => trip);
+  }, [availableTrips, nearestRouteFrom, nearestRouteTo]);
+
+  const handleTripSearch = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      setSearchingTrips(true);
+      const params = new URLSearchParams();
+      if (tripSearch.from.trim()) params.set("from", tripSearch.from.trim());
+      if (tripSearch.to.trim()) params.set("to", tripSearch.to.trim());
+      if (tripSearch.departureDate) {
+        params.set("departureDate", tripSearch.departureDate);
+      }
+
+      const response = await api.get(`/trip/search?${params.toString()}`);
+      setTrips(Array.isArray(response.data?.trips) ? response.data.trips : []);
+      setTripView("available");
+    } catch (error: any) {
+      showMessage(
+        error.response?.data?.message || "Unable to search trips",
+        "error",
+      );
+    } finally {
+      setSearchingTrips(false);
+    }
+  };
+
+  const clearTripSearch = () => {
+    setTripSearch({ from: "", to: "", departureDate: "" });
+    setTripView("all");
+    void getTrips();
+  };
 
   // PARCEL FORM
   const openCreateForm = () => {
@@ -323,13 +414,24 @@ export const SenderPage = () => {
             </p>
           </div>
 
-          <button
-            onClick={openCreateForm}
-            className="flex items-center justify-center gap-2 rounded-xl bg-lime-400 px-5 py-3 text-sm font-bold text-[#0b1020] shadow-lg shadow-lime-400/10 transition hover:bg-lime-300"
-          >
-            <Plus size={18} />
-            Create a parcel
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/history")}
+              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#111a2e] px-4 py-3 text-sm font-medium text-slate-300 transition hover:border-lime-400/30 hover:text-lime-300"
+            >
+              <HistoryIcon size={17} />
+              History
+            </button>
+            <LogoutButton />
+            <button
+              onClick={openCreateForm}
+              className="flex items-center justify-center gap-2 rounded-xl bg-lime-400 px-5 py-3 text-sm font-bold text-[#0b1020] shadow-lg shadow-lime-400/10 transition hover:bg-lime-300"
+            >
+              <Plus size={18} />
+              Create a parcel
+            </button>
+          </div>
         </header>
 
         {/* MESSAGE */}
@@ -349,25 +451,39 @@ export const SenderPage = () => {
 
         {/* OVERVIEW STATS */}
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className={`${cardClass} p-5`}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`${cardClass} p-5`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-400">My parcels</span>
               <Package className="text-lime-400" size={20} />
             </div>
             <p className="mt-4 text-3xl font-bold">{parcels.length}</p>
             <p className="mt-1 text-xs text-slate-500">Total created parcels</p>
-          </div>
+          </motion.div>
 
-          <div className={`${cardClass} p-5`}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.04 }}
+            className={`${cardClass} p-5`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-400">Available trips</span>
               <Truck className="text-lime-400" size={20} />
             </div>
             <p className="mt-4 text-3xl font-bold">{availableTrips.length}</p>
             <p className="mt-1 text-xs text-slate-500">Trips with free capacity</p>
-          </div>
+          </motion.div>
 
-          <div className={`${cardClass} p-5`}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className={`${cardClass} p-5`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-400">Total parcel weight</span>
               <Weight className="text-lime-400" size={20} />
@@ -377,9 +493,14 @@ export const SenderPage = () => {
               <span className="ml-1 text-base text-slate-400">kg</span>
             </p>
             <p className="mt-1 text-xs text-slate-500">Across your parcels</p>
-          </div>
+          </motion.div>
 
-          <div className={`${cardClass} p-5`}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className={`${cardClass} p-5`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-sm text-slate-400">Combined budget</span>
               <Wallet className="text-lime-400" size={20} />
@@ -388,7 +509,7 @@ export const SenderPage = () => {
               ₹{totalBudget.toLocaleString("en-IN")}
             </p>
             <p className="mt-1 text-xs text-slate-500">Your parcel budgets</p>
-          </div>
+          </motion.div>
         </section>
 
         {/* QUICK ACTIONS */}
@@ -452,8 +573,14 @@ export const SenderPage = () => {
         </section>
 
         {/* CREATE / EDIT PARCEL FORM */}
+        <AnimatePresence>
         {showParcelForm && (
-          <section className={`${cardClass} p-5 sm:p-7`}>
+          <motion.section
+            initial={{ opacity: 0, height: 0, y: -8 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -8 }}
+            className={`${cardClass} overflow-hidden p-5 sm:p-7`}
+          >
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-lime-400">
@@ -599,8 +726,9 @@ export const SenderPage = () => {
                 </button>
               </div>
             </form>
-          </section>
+          </motion.section>
         )}
+        </AnimatePresence>
 
         {/* MY PARCELS */}
         <section id="my-parcels" className="space-y-5">
@@ -650,9 +778,12 @@ export const SenderPage = () => {
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {parcels.map((parcel) => (
-                <article
+              {parcels.map((parcel, index) => (
+                <motion.article
                   key={parcel._id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index, 6) * 0.035 }}
                   className={`${cardClass} p-5 transition duration-200 hover:-translate-y-1 hover:border-lime-400/20`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -737,7 +868,7 @@ export const SenderPage = () => {
                       {deletingId === parcel._id ? "Deleting..." : "Delete"}
                     </button>
                   </div>
-                </article>
+                </motion.article>
               ))}
             </div>
           )}
@@ -792,6 +923,67 @@ export const SenderPage = () => {
             </button>
           </div>
 
+          <form
+            onSubmit={handleTripSearch}
+            className={`${cardClass} grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_180px_auto_auto]`}
+          >
+            <label className="sr-only" htmlFor="sender-trip-from">
+              Pickup city
+            </label>
+            <input
+              id="sender-trip-from"
+              value={tripSearch.from}
+              onChange={(event) =>
+                setTripSearch({ ...tripSearch, from: event.target.value })
+              }
+              placeholder="Pickup city"
+              className={inputClass}
+            />
+            <label className="sr-only" htmlFor="sender-trip-to">
+              Delivery city
+            </label>
+            <input
+              id="sender-trip-to"
+              value={tripSearch.to}
+              onChange={(event) =>
+                setTripSearch({ ...tripSearch, to: event.target.value })
+              }
+              placeholder="Delivery city"
+              className={inputClass}
+            />
+            <label className="sr-only" htmlFor="sender-trip-date">
+              Departure date
+            </label>
+            <input
+              id="sender-trip-date"
+              type="date"
+              min={new Date().toISOString().slice(0, 10)}
+              value={tripSearch.departureDate}
+              onChange={(event) =>
+                setTripSearch({
+                  ...tripSearch,
+                  departureDate: event.target.value,
+                })
+              }
+              className={inputClass}
+            />
+            <button
+              type="submit"
+              disabled={searchingTrips}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-400 px-5 py-3 text-sm font-bold text-[#0b1020] transition hover:bg-lime-300 disabled:opacity-50"
+            >
+              <Search size={16} />
+              {searchingTrips ? "Searching..." : "Search trips"}
+            </button>
+            <button
+              type="button"
+              onClick={clearTripSearch}
+              className="rounded-xl border border-white/10 px-4 py-3 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white"
+            >
+              Clear
+            </button>
+          </form>
+
           {loadingTrips ? (
             <div className={`${cardClass} p-10 text-center text-sm text-slate-400`}>
               Finding trips for you...
@@ -810,9 +1002,12 @@ export const SenderPage = () => {
             </div>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
-              {displayedTrips.map((trip) => (
-                <article
+              {displayedTrips.map((trip, index) => (
+                <motion.article
                   key={trip._id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(index, 6) * 0.035 }}
                   className={`${cardClass} p-5 transition duration-200 hover:-translate-y-1 hover:border-lime-400/20`}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -905,88 +1100,85 @@ export const SenderPage = () => {
                       </button>
                     </div>
                   </div>
-                </article>
+                </motion.article>
               ))}
             </div>
           )}
         </section>
 
-        {/* NEAREST TRIPS — UI PLACEHOLDER ONLY */}
-        <section className={`${cardClass} relative overflow-hidden p-6 sm:p-8`}>
-          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-lime-400/[0.04] blur-3xl" />
-
-          <div className="relative">
-            <div className="flex items-center gap-2 text-lime-400">
-              <MapPin size={17} />
-              <span className="text-xs font-semibold uppercase tracking-widest">
-                Location based discovery
-              </span>
-            </div>
-
-            <h2 className="mt-3 text-2xl font-bold">Nearest trips</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-              Discover travellers and delivery routes around your selected
-              locations.
-            </p>
-
-            {/* Build your nearest-trips feature here */}
-            <div className="mt-6 flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#0d1527] text-center">
-              <MapPin size={28} className="text-slate-500" />
-              <p className="mt-3 text-sm font-semibold text-slate-300">
-                Nearest trips will appear here
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                Your location-based trip discovery UI goes here.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* AI ASSISTANCE */}
-        <section className="relative overflow-hidden rounded-2xl border border-lime-400/20 bg-gradient-to-br from-[#17243a] via-[#111a2e] to-[#111a2e] p-6 sm:p-8">
-          <div className="pointer-events-none absolute -right-12 -top-16 h-64 w-64 rounded-full bg-lime-400/[0.08] blur-3xl" />
-
-          <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center">
-            <div className="max-w-2xl">
+        {/* ROUTE MATCHES */}
+        <section className={`${cardClass} p-6 sm:p-8`}>
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+            <div>
               <div className="flex items-center gap-2 text-lime-400">
-                <Sparkles size={19} />
-                <span className="text-xs font-bold uppercase tracking-widest">
-                  Quick & Pick AI
-                </span>
-                <span className="rounded-full border border-lime-400/20 bg-lime-400/10 px-2.5 py-1 text-[10px] font-semibold text-lime-300">
-                  Coming soon
+                <MapPin size={17} />
+                <span className="text-xs font-semibold uppercase tracking-widest">
+                  Route suggestions
                 </span>
               </div>
-
-              <h2 className="mt-4 text-2xl font-bold sm:text-3xl">
-                Your smart delivery assistant.
-              </h2>
-
-              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
-                Get help finding suitable trips, understanding delivery costs,
-                preparing parcel details and making smarter delivery decisions.
+              <h2 className="mt-3 text-2xl font-bold">Closest route matches</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                {nearestRouteFrom || nearestRouteTo
+                  ? `Suggested for ${nearestRouteFrom || "any pickup"} → ${nearestRouteTo || "any destination"}.`
+                  : "Upcoming trips with available capacity, ordered by departure date."}
               </p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {[
-                  "Trip suggestions",
-                  "Budget guidance",
-                  "Delivery assistance",
-                ].map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
             </div>
-
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center self-start rounded-3xl border border-lime-400/20 bg-lime-400/10 text-lime-400 md:self-center">
-              <Sparkles size={42} />
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTripView("available");
+                document.getElementById("trips-section")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+              className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-300 transition hover:border-lime-400/30 hover:text-lime-300"
+            >
+              Browse all trips
+            </button>
           </div>
+
+          {nearestTrips.length ? (
+            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+              {nearestTrips.map((trip, index) => (
+                <motion.article
+                  key={trip._id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="rounded-xl border border-white/[0.07] bg-[#0d1527] p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-semibold text-lime-300">
+                      {trip.availableCapacity} kg free
+                    </span>
+                    <span className="text-xs capitalize text-slate-500">
+                      {trip.transportMode}
+                    </span>
+                  </div>
+                  <p className="mt-4 truncate text-sm font-semibold">
+                    {trip.from}
+                    <span className="mx-2 text-lime-300">→</span>
+                    {trip.to}
+                  </p>
+                  <p className="mt-2 text-xs text-slate-400">
+                    {formatDate(trip.departureDate)} · ₹{trip.pricePerKg}/kg
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openTrip(trip._id)}
+                    className="mt-4 text-xs font-semibold text-lime-300 transition hover:text-lime-200"
+                  >
+                    View trip details
+                  </button>
+                </motion.article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-white/10 bg-[#0d1527] p-8 text-center text-sm text-slate-500">
+              No upcoming trips match this route yet. Try another pickup or
+              destination.
+            </div>
+          )}
         </section>
 
         {/* TRUST / SELLER REMINDER */}
@@ -1029,12 +1221,19 @@ export const SenderPage = () => {
       </div>
 
       {/* TRIP DETAILS MODAL */}
+      <AnimatePresence>
       {selectedTrip && (
-        <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           onClick={() => setSelectedTrip(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
         >
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-lg space-y-5 rounded-2xl border border-white/10 bg-[#111a2e] p-6 shadow-2xl"
           >
@@ -1119,9 +1318,10 @@ export const SenderPage = () => {
             >
               Close details
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };

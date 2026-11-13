@@ -5,16 +5,16 @@ import {
   Package,
   Truck,
   Wallet,
-  ShieldCheck,
   Settings,
-  LogOut,
   Menu,
   Bell,
-  MessageCircle,
   MessageCircleCheckIcon,
+  History as HistoryIcon,
 } from "lucide-react";
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import LogoutButton from "@/components/LogoutButton";
 import Overview from "../components/TravellerPage/Overview";
 import MyProfile from "../components/TravellerPage/MyProfile";
 import MyTrips from "../components/TravellerPage/MyTrips";
@@ -33,11 +33,13 @@ const menuItems = [
   { name: "Earnings", icon: Wallet },
   { name: "Message", icon: MessageCircleCheckIcon },
   { name: "Settings", icon: Settings },
+  { name: "History", icon: HistoryIcon },
 ];
 
 const TravellerPage = () => {
   const [activeTab, setActiveTab] = useState("Overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-[#0b1020] text-white flex">
@@ -63,6 +65,11 @@ const TravellerPage = () => {
               <button
                 key={item.name}
                 onClick={() => {
+                  if (item.name === "History") {
+                    navigate("/history");
+                    setSidebarOpen(false);
+                    return;
+                  }
                   setActiveTab(item.name);
                   setSidebarOpen(false);
                 }}
@@ -79,10 +86,7 @@ const TravellerPage = () => {
           })}
         </nav>
 
-        <button className="flex items-center gap-3 text-red-400 px-4 py-3 hover:bg-red-400/10 rounded-xl">
-          <LogOut size={19} />
-          Logout
-        </button>
+        <LogoutButton />
       </aside>
 
       {/* Main Content */}

@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Plus,
   MapPin,
@@ -61,6 +62,7 @@ const MyTrips = () => {
   const [saving, setSaving] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"mine" | "all">("mine");
+  const [isFilteredSearch, setIsFilteredSearch] = useState(false);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -107,7 +109,13 @@ const MyTrips = () => {
 
       const res = await api.get("/trip/all");
 
-      setTrips(res.data.trips || []);
+      setTrips(
+        Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.trips)
+            ? res.data.trips
+            : [],
+      );
 
 
       // dispatch(setMyTrips(res.data.trips || []))
@@ -122,14 +130,14 @@ const MyTrips = () => {
   };
 
   useEffect(() => {
+    if (isFilteredSearch) return;
+
     if (activeTab === "mine") {
       getMyTrips();
     } else {
       getAllTrips();
     }
-  }, [activeTab]);
-
-  console.log(trips);
+  }, [activeTab, isFilteredSearch]);
 
   // HANDLE FORM INPUTS
   const handleChange = (
@@ -168,15 +176,19 @@ const MyTrips = () => {
         await api.put(`/trip/triproute/${editingId}`, payload);
         setMessage("Trip updated successfully");
       } else {
-        const res = await api.post("/trip/create", payload);
+        await api.post("/trip/create", payload);
 
 
         setMessage("Trip created successfully");
       }
 
       resetForm();
-      await getMyTrips();
-      setActiveTab("mine");
+      if (activeTab === "mine" && !isFilteredSearch) {
+        await getMyTrips();
+      } else {
+        setIsFilteredSearch(false);
+        setActiveTab("mine");
+      }
     } catch (error: any) {
       setMessage(
         error.response?.data?.message || "Something went wrong"
@@ -207,6 +219,7 @@ const MyTrips = () => {
       );
 
       setTrips(res.data.trips || []);
+      setIsFilteredSearch(true);
       setActiveTab("all");
     } catch (error: any) {
       setMessage(
@@ -314,7 +327,7 @@ const MyTrips = () => {
 
         <form
           onSubmit={handleSearch}
-          className="grid gap-4 md:grid-cols-4"
+          className="grid gap-4 md:grid-cols-5"
         >
           <input
             placeholder="From location"
@@ -348,10 +361,23 @@ const MyTrips = () => {
 
           <button
             type="submit"
-            className="flex items-center justify-center gap-2 rounded-xl bg-[#bef264] px-4 py-3 font-semibold text-[#0b1020]"
+            disabled={loading}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#bef264] px-4 py-3 font-semibold text-[#0b1020] transition hover:bg-lime-300 disabled:opacity-50"
           >
             <Search size={18} />
-            Search
+            {loading ? "Searching..." : "Search"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch({ from: "", to: "", departureDate: "" });
+              setIsFilteredSearch(false);
+              setActiveTab("all");
+            }}
+            className="rounded-xl border border-white/10 px-4 py-3 text-sm text-gray-400 transition hover:bg-white/5 hover:text-white"
+          >
+            Clear
           </button>
         </form>
       </div>
@@ -360,7 +386,10 @@ const MyTrips = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex gap-2 rounded-xl bg-[#111a2e] p-1">
           <button
-            onClick={() => setActiveTab("mine")}
+            onClick={() => {
+              setIsFilteredSearch(false);
+              setActiveTab("mine");
+            }}
             className={`rounded-lg px-5 py-2 text-sm font-medium ${activeTab === "mine"
                 ? "bg-[#bef264] text-[#0b1020]"
                 : "text-gray-400"
@@ -370,7 +399,10 @@ const MyTrips = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab("all")}
+            onClick={() => {
+              setIsFilteredSearch(false);
+              setActiveTab("all");
+            }}
             className={`rounded-lg px-5 py-2 text-sm font-medium ${activeTab === "all"
                 ? "bg-[#bef264] text-[#0b1020]"
                 : "text-gray-400"
@@ -381,9 +413,17 @@ const MyTrips = () => {
         </div>
 
         <button
-          onClick={() =>
-            activeTab === "mine" ? getMyTrips() : getAllTrips()
-          }
+          onClick={() => {
+            if (isFilteredSearch) {
+              setIsFilteredSearch(false);
+              return;
+            }
+            if (activeTab === "mine") {
+              void getMyTrips();
+            } else {
+              void getAllTrips();
+            }
+          }}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#bef264]"
         >
           <RefreshCw size={16} />
@@ -408,11 +448,18 @@ const MyTrips = () => {
           </p>
         </div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-2">
-          {trips.map((trip) => (
-            <div
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="grid gap-5 xl:grid-cols-2"
+        >
+          {trips.map((trip, index) => (
+            <motion.article
               key={trip._id}
-              className="rounded-2xl border border-white/10 bg-[#111a2e] p-5 transition hover:border-[#bef264]/40"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(index, 6) * 0.035 }}
+              className="rounded-2xl border border-white/10 bg-[#111a2e] p-5 transition hover:-translate-y-1 hover:border-[#bef264]/40 hover:shadow-xl hover:shadow-black/20"
             >
               {/* CARD HEADER */}
               <div className="mb-5 flex items-center justify-between">
@@ -517,15 +564,26 @@ const MyTrips = () => {
                   </>
                 )}
               </div>
-            </div>
+            </motion.article>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* CREATE / EDIT MODAL */}
+      <AnimatePresence>
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4">
-          <div className="my-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a2e] p-6">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            className="my-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-[#111a2e] p-6"
+          >
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">
@@ -692,14 +750,26 @@ const MyTrips = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* TRIP DETAILS MODAL */}
+      <AnimatePresence>
       {selectedTrip && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111a2e] p-6">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111a2e] p-6"
+          >
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-xl font-bold">Trip Details</h2>
 
@@ -770,9 +840,10 @@ const MyTrips = () => {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };

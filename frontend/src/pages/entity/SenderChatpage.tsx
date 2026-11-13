@@ -49,6 +49,7 @@ const SenderChatpage = () => {
 
   const senderId = userData?._id;
   const receiverId = id;
+  const activeConversationRef = useRef("");
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState("");
@@ -69,6 +70,10 @@ const SenderChatpage = () => {
   const typingTimeoutRef = useRef<number | null>(null);
   const peerTypingTimeoutRef = useRef<number | null>(null);
   const typingActiveRef = useRef(false);
+
+  useEffect(() => {
+    activeConversationRef.current = `${senderId || ""}:${receiverId || ""}`;
+  }, [senderId, receiverId]);
 
   const stopTyping = useCallback(() => {
     if (typingTimeoutRef.current !== null) {
@@ -104,6 +109,8 @@ const SenderChatpage = () => {
   const getMessages = useCallback(async () => {
     if (!receiverId || !senderId) return;
 
+    const requestKey = `${senderId}:${receiverId}`;
+
     try {
       setLoading(true);
       setError("");
@@ -111,6 +118,16 @@ const SenderChatpage = () => {
       const response = await api.get(
         `/chat/get-messages/${receiverId}`
       );
+      if (activeConversationRef.current !== requestKey) return;
+      const history = Array.isArray(response.data)
+        ? response.data.filter(
+            (msg: Message) =>
+              (String(msg.sender) === String(senderId) &&
+                String(msg.receiver) === String(receiverId)) ||
+              (String(msg.sender) === String(receiverId) &&
+                String(msg.receiver) === String(senderId)),
+          )
+        : [];
 
       setMessages((current) => {
         const relevantMessages = current.filter(
@@ -123,16 +140,17 @@ const SenderChatpage = () => {
         const byId = new Map(
           relevantMessages.map((msg) => [msg._id, msg]),
         );
-        for (const msg of response.data) {
+        for (const msg of history) {
           byId.set(msg._id, { ...byId.get(msg._id), ...msg });
         }
         return Array.from(byId.values());
       });
     } catch (error) {
+      if (activeConversationRef.current !== requestKey) return;
       console.log("Get messages error:", error);
       setError("Messages load nahi ho paaye.");
     } finally {
-      setLoading(false);
+      if (activeConversationRef.current === requestKey) setLoading(false);
     }
   }, [receiverId, senderId]);
 
@@ -284,6 +302,14 @@ const SenderChatpage = () => {
     getMessages();
   }, [getMessages]);
 
+  const visibleMessages = messages.filter(
+    (msg) =>
+      (String(msg.sender) === String(senderId) &&
+        String(msg.receiver) === String(receiverId)) ||
+      (String(msg.sender) === String(receiverId) &&
+        String(msg.receiver) === String(senderId)),
+  );
+
   // Scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({
@@ -348,7 +374,7 @@ const SenderChatpage = () => {
               <Loader2 size={20} className="animate-spin text-[#bef264]" />
               <span className="text-sm">Loading messages...</span>
             </div>
-          ) : messages.length === 0 ? (
+          ) : visibleMessages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#bef264]/10 text-[#bef264]">
                 <MessageCircle size={30} />
@@ -363,7 +389,7 @@ const SenderChatpage = () => {
               </p>
             </div>
           ) : (
-            messages.map((msg) => {
+            visibleMessages.map((msg) => {
               const isSender =
                 String(msg.sender) === String(senderId);
 

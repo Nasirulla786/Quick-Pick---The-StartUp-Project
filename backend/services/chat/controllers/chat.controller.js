@@ -52,19 +52,24 @@ export const GetMessages = async (req, res) => {
     const sender = req.userId;
     const receiver = req.params.id;
 
-    // Find conversation in both directions
-    const CheckConversation = await Conversation.findOne({
-      $or: [
-        { senderId: sender, receiverId: receiver },
-        { senderId: receiver, receiverId: sender },
-      ],
-    }).populate("messages");
-
-    if (!CheckConversation) {
-      return res.status(200).json([]);
+    if (!/^[a-f\d]{24}$/i.test(receiver)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid chat participant",
+      });
     }
 
-    return res.status(200).json(CheckConversation.messages);
+    // Load only messages exchanged by this exact participant pair. Conversation
+    // documents can be duplicated or stale, so their message arrays are not a
+    // safe boundary for private chat history.
+    const messages = await Message.find({
+      $or: [
+        { sender, receiver },
+        { sender: receiver, receiver: sender },
+      ],
+    }).sort({ createdAt: 1, _id: 1 });
+
+    return res.status(200).json(messages);
   } catch (error) {
     console.log("This is get message error:", error);
 

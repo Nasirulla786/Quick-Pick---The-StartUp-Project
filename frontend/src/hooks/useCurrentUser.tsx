@@ -1,25 +1,34 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import api from "@/services/Axios";
-import { setUserData } from "@/redux/slices/userSlice";
+import { clearUserData, setUserData } from "@/redux/slices/userSlice";
 
 const useCurrentUser = () => {
     const dispatch = useDispatch();
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        let isActive = true;
+
         const fetchCurrentUser = async () => {
             try {
                 const res = await api.get("/auth/user/current-user");
                 dispatch(setUserData(res.data.user));
-            } catch (error: any) {
-                console.log(
-                    error.response?.data?.message || "User not authenticated"
-                );
+            } catch {
+                dispatch(clearUserData());
+            } finally {
+                if (isActive) setIsLoading(false);
             }
         };
 
         fetchCurrentUser();
+
+        return () => {
+            isActive = false;
+        };
     }, [dispatch]);
+
+    return isLoading;
 };
 
 export default useCurrentUser;
